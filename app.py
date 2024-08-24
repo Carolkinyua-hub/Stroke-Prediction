@@ -35,6 +35,11 @@ if uploaded_file is not None:
     X_balanced = balanced_df.drop('Stroke', axis=1)  # Features
     y = balanced_df['Stroke']  # Target variable
 
+    # Check lengths
+    st.write(f"Length of balanced data: {len(balanced_df)}")
+    st.write(f"Length of X_balanced: {len(X_balanced)}")
+    st.write(f"Length of y: {len(y)}")
+
     # Scale the data
     scaler = MinMaxScaler()
     X_scaled = scaler.fit_transform(X_balanced)
@@ -46,11 +51,12 @@ if uploaded_file is not None:
     y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
-    # Check lengths
-    st.write(f"Length of data: {len(data)}")
+    # Check lengths again
+    st.write(f"Length of X_scaled: {len(X_scaled)}")
+    st.write(f"Length of y_pred_prob: {len(y_pred_prob)}")
     st.write(f"Length of y_pred: {len(y_pred)}")
 
-    if len(data) != len(y_pred):
+    if len(X_scaled) != len(y_pred):
         st.write("Mismatch between length of predictions and dataset.")
     else:
         # Display stroke prevalence
@@ -92,19 +98,19 @@ if uploaded_file is not None:
             plt.figure(figsize=(10, 6))
             
             # Check if the feature is valid
-            if feature not in data.columns:
+            if feature not in X_balanced.columns:
                 st.write(f"{feature} is not a valid feature in the dataset.")
                 return
             
-            # Ensure y_pred is properly aligned with data
-            if len(y_pred) != len(data):
+            # Ensure y_pred is properly aligned with X_balanced
+            if len(y_pred) != len(X_balanced):
                 st.write("Mismatch between length of predictions and dataset.")
                 return
 
             # Create DataFrame for plotting
             try:
                 data_with_predictions = pd.DataFrame({
-                    feature: data[feature].values,
+                    feature: X_balanced[feature].values,
                     'Predicted': y_pred
                 })
             except Exception as e:
@@ -112,7 +118,7 @@ if uploaded_file is not None:
                 return
 
             # Plot distributions based on feature type
-            if data[feature].nunique() == 2:  # Binary features
+            if X_balanced[feature].nunique() == 2:  # Binary features
                 sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=False, label='Stroke Predicted', color='green', bins=2)
                 sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=False, label='No Stroke Predicted', color='red', bins=2)
                 plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
