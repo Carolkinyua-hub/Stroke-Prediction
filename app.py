@@ -6,10 +6,10 @@ from sklearn.utils import shuffle
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from sklearn.metrics import roc_curve, auc
 
 # Streamlit app configuration
-st.title('Stroke Prediction App')
+st.set_page_config(page_title="Stroke Prediction Analysis", layout="wide")
+st.title('Stroke Prediction Analysis Dashboard')
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
@@ -46,32 +46,33 @@ if uploaded_file is not None:
     y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
-    # Display statistics
-    st.write(f"Stroke Prevalence: {y.mean() * 100:.2f}%")
+    # Display stroke prevalence
+    st.write(f"Stroke Prevalence in the Data: {y.mean() * 100:.2f}%")
 
-    # Visualize feature statistics
-    st.subheader('Feature Statistics')
-    feature_stats = pd.DataFrame({
-        'Feature': X_balanced.columns,
-        'Mean': X_balanced.mean(),
-        'Standard Deviation': X_balanced.std()
-    })
-    st.write(feature_stats)
+    # Create a container for distribution plots
+    st.subheader('Distribution of Stroke Predicted Cases for Each Feature')
 
-    # Plot stroke prevalence distribution
-    st.subheader('Stroke Prevalence Distribution')
-    plt.figure(figsize=(10, 6))
-    sns.histplot(data['Stroke'], kde=False, bins=2)
-    plt.title('Distribution of Stroke')
-    plt.xlabel('Stroke')
-    plt.ylabel('Count')
-    st.pyplot()
+    # Create a column layout
+    cols = st.columns(3)
+    
+    for i, feature in enumerate(X_balanced.columns):
+        with cols[i % 3]:
+            plt.figure(figsize=(5, 4))
+            sns.histplot(x=X_balanced[feature][y == 1], kde=True, color='blue', label='Stroke Cases')
+            sns.histplot(x=X_balanced[feature][y == 0], kde=True, color='red', label='No Stroke Cases')
+            plt.title(f'Distribution of {feature}')
+            plt.xlabel(feature)
+            plt.ylabel('Count')
+            plt.legend()
+            st.pyplot()
 
-    # Plot ROC Curve
+    # ROC Curve
+    st.subheader('ROC Curve')
+    from sklearn.metrics import roc_curve, auc
+
     fpr, tpr, _ = roc_curve(y, y_pred_prob)
     roc_auc = auc(fpr, tpr)
 
-    st.subheader('ROC Curve')
     plt.figure(figsize=(10, 6))
     plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
     plt.plot([0, 1], [0, 1], color='red', lw=2, linestyle='--')
@@ -82,30 +83,6 @@ if uploaded_file is not None:
     plt.title('Receiver Operating Characteristic (ROC)')
     plt.legend(loc='lower right')
     st.pyplot()
-
-    # Plot stroke predictions
-    st.subheader('Stroke Prediction Counts')
-    prediction_df = pd.DataFrame({
-        'Actual Stroke': y,
-        'Predicted Stroke': y_pred
-    })
-    plt.figure(figsize=(12, 6))
-    sns.countplot(data=prediction_df, x='Predicted Stroke', hue='Actual Stroke')
-    plt.title('Count of Predicted Stroke Cases by Actual Stroke')
-    plt.xlabel('Predicted Stroke')
-    plt.ylabel('Count')
-    st.pyplot()
-
-    # Plot features comparing predicted stroke cases
-    st.subheader('Feature Distributions by Predicted Stroke')
-    features = X_balanced.columns
-    for feature in features:
-        plt.figure(figsize=(12, 6))
-        sns.boxplot(x=prediction_df['Predicted Stroke'], y=X_balanced[feature])
-        plt.title(f'{feature} Distribution by Predicted Stroke')
-        plt.xlabel('Predicted Stroke')
-        plt.ylabel(feature)
-        st.pyplot()
 
 else:
     st.write("Please upload a CSV file.")
