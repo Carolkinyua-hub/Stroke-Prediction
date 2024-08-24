@@ -46,85 +46,92 @@ if uploaded_file is not None:
     y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
-    # Display stroke prevalence
-    st.write(f"Stroke Prevalence: {y.mean() * 100:.2f}%")
+    # Check lengths
+    st.write(f"Length of data: {len(data)}")
+    st.write(f"Length of y_pred: {len(y_pred)}")
 
-    # Plot ROC Curve
-    fpr, tpr, _ = roc_curve(y, y_pred_prob)
-    roc_auc = auc(fpr, tpr)
+    if len(data) != len(y_pred):
+        st.write("Mismatch between length of predictions and dataset.")
+    else:
+        # Display stroke prevalence
+        st.write(f"Stroke Prevalence: {y.mean() * 100:.2f}%")
 
-    st.subheader('ROC Curve')
-    plt.figure(figsize=(10, 6))
-    plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='red', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC)')
-    plt.legend(loc='lower right')
-    st.pyplot()
+        # Plot ROC Curve
+        fpr, tpr, _ = roc_curve(y, y_pred_prob)
+        roc_auc = auc(fpr, tpr)
 
-    # Confusion Matrix
-    st.subheader('Confusion Matrix')
-    cm = confusion_matrix(y, y_pred)
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, 
-                xticklabels=['No Stroke', 'Stroke'], 
-                yticklabels=['No Stroke', 'Stroke'])
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.title('Confusion Matrix')
-    st.pyplot()
-
-    # Distribution plots for each feature
-    st.subheader('Feature Distribution for Predicted Stroke Cases')
-
-    # Function to plot distribution of a feature based on predictions
-    def plot_feature_distribution(feature):
+        st.subheader('ROC Curve')
         plt.figure(figsize=(10, 6))
-        
-        # Check if the feature is valid
-        if feature not in data.columns:
-            st.write(f"{feature} is not a valid feature in the dataset.")
-            return
-        
-        # Ensure y_pred is properly aligned with data
-        if len(y_pred) != len(data):
-            st.write("Mismatch between length of predictions and dataset.")
-            return
-
-        # Create DataFrame for plotting
-        try:
-            data_with_predictions = pd.DataFrame({
-                feature: data[feature].values,
-                'Predicted': y_pred
-            })
-        except Exception as e:
-            st.write(f"Error creating DataFrame: {e}")
-            return
-
-        # Plot distributions based on feature type
-        if data[feature].nunique() == 2:  # Binary features
-            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=False, label='Stroke Predicted', color='green', bins=2)
-            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=False, label='No Stroke Predicted', color='red', bins=2)
-            plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
-            plt.xlabel(feature)
-            plt.ylabel('Count')
-        else:  # Non-binary features
-            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=True, label='Stroke Predicted', color='green')
-            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=True, label='No Stroke Predicted', color='red')
-            plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
-            plt.xlabel(feature)
-            plt.ylabel('Density')
-
-        plt.legend()
+        plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+        plt.plot([0, 1], [0, 1], color='red', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic (ROC)')
+        plt.legend(loc='lower right')
         st.pyplot()
 
-    # Plot distributions for each feature
-    features = X_balanced.columns
-    for feature in features:
-        plot_feature_distribution(feature)
+        # Confusion Matrix
+        st.subheader('Confusion Matrix')
+        cm = confusion_matrix(y, y_pred)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, 
+                    xticklabels=['No Stroke', 'Stroke'], 
+                    yticklabels=['No Stroke', 'Stroke'])
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        plt.title('Confusion Matrix')
+        st.pyplot()
+
+        # Distribution plots for each feature
+        st.subheader('Feature Distribution for Predicted Stroke Cases')
+
+        # Function to plot distribution of a feature based on predictions
+        def plot_feature_distribution(feature):
+            plt.figure(figsize=(10, 6))
+            
+            # Check if the feature is valid
+            if feature not in data.columns:
+                st.write(f"{feature} is not a valid feature in the dataset.")
+                return
+            
+            # Ensure y_pred is properly aligned with data
+            if len(y_pred) != len(data):
+                st.write("Mismatch between length of predictions and dataset.")
+                return
+
+            # Create DataFrame for plotting
+            try:
+                data_with_predictions = pd.DataFrame({
+                    feature: data[feature].values,
+                    'Predicted': y_pred
+                })
+            except Exception as e:
+                st.write(f"Error creating DataFrame: {e}")
+                return
+
+            # Plot distributions based on feature type
+            if data[feature].nunique() == 2:  # Binary features
+                sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=False, label='Stroke Predicted', color='green', bins=2)
+                sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=False, label='No Stroke Predicted', color='red', bins=2)
+                plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
+                plt.xlabel(feature)
+                plt.ylabel('Count')
+            else:  # Non-binary features
+                sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=True, label='Stroke Predicted', color='green')
+                sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=True, label='No Stroke Predicted', color='red')
+                plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
+                plt.xlabel(feature)
+                plt.ylabel('Density')
+
+            plt.legend()
+            st.pyplot()
+
+        # Plot distributions for each feature
+        features = X_balanced.columns
+        for feature in features:
+            plot_feature_distribution(feature)
 
 else:
     st.write("Please upload a CSV file.")
