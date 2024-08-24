@@ -85,8 +85,17 @@ if uploaded_file is not None:
     # Function to plot distribution of a feature based on predictions
     def plot_feature_distribution(feature):
         plt.figure(figsize=(10, 6))
-        sns.histplot(data[feature][y_pred == 1], kde=True, label='Stroke Predicted', color='green', bins=20)
-        sns.histplot(data[feature][y_pred == 0], kde=True, label='No Stroke Predicted', color='red', bins=20)
+        
+        # Filter the DataFrame based on the predictions
+        data_with_predictions = pd.DataFrame({
+            feature: data[feature].values,
+            'Predicted': y_pred
+        })
+        
+        # Plot distributions for predicted stroke cases
+        sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=True, label='Stroke Predicted', color='green', bins=20)
+        sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=True, label='No Stroke Predicted', color='red', bins=20)
+        
         plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
         plt.xlabel(feature)
         plt.ylabel('Frequency')
