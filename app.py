@@ -89,11 +89,6 @@ if uploaded_file is not None:
             st.write(f"{feature} is not a valid feature in the dataset.")
             return
         
-        # Check if feature has binary values
-        if data[feature].nunique() != 2:
-            st.write(f"{feature} is not binary or has more than two unique values.")
-            return
-
         # Ensure y_pred is properly aligned with data
         if len(y_pred) != len(data):
             st.write("Mismatch between length of predictions and dataset.")
@@ -109,20 +104,26 @@ if uploaded_file is not None:
             st.write(f"Error creating DataFrame: {e}")
             return
 
-        # Plot distributions
-        plt.figure(figsize=(10, 6))
-        sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=False, label='Stroke Predicted', color='green', bins=2)
-        sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=False, label='No Stroke Predicted', color='red', bins=2)
-        
-        plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
-        plt.xlabel(feature)
-        plt.ylabel('Count')
+        # Plot distributions based on feature type
+        if data[feature].nunique() == 2:  # Binary features
+            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=False, label='Stroke Predicted', color='green', bins=2)
+            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=False, label='No Stroke Predicted', color='red', bins=2)
+            plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
+            plt.xlabel(feature)
+            plt.ylabel('Count')
+        else:  # Non-binary features
+            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=True, label='Stroke Predicted', color='green')
+            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=True, label='No Stroke Predicted', color='red')
+            plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
+            plt.xlabel(feature)
+            plt.ylabel('Density')
+
         plt.legend()
         st.pyplot()
 
-    # Plot distributions for each binary feature
-    binary_features = X_balanced.columns
-    for feature in binary_features:
+    # Plot distributions for each feature
+    features = X_balanced.columns
+    for feature in features:
         plot_feature_distribution(feature)
 
 else:
