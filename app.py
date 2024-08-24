@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, roc_curve, auc
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -50,8 +50,6 @@ if uploaded_file is not None:
     st.write(f"Stroke Prevalence: {y.mean() * 100:.2f}%")
 
     # Plot ROC Curve
-    from sklearn.metrics import roc_curve, auc
-
     fpr, tpr, _ = roc_curve(y, y_pred_prob)
     roc_auc = auc(fpr, tpr)
 
@@ -86,21 +84,25 @@ if uploaded_file is not None:
     def plot_feature_distribution(feature):
         plt.figure(figsize=(10, 6))
         
-        # Filter the DataFrame based on the predictions
-        data_with_predictions = pd.DataFrame({
-            feature: data[feature].values,
-            'Predicted': y_pred
-        })
-        
-        # Plot distributions for predicted stroke cases
-        sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=True, label='Stroke Predicted', color='green', bins=20)
-        sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=True, label='No Stroke Predicted', color='red', bins=20)
-        
-        plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
-        plt.xlabel(feature)
-        plt.ylabel('Frequency')
-        plt.legend()
-        st.pyplot()
+        # Ensure the feature is binary and not empty
+        if feature in data.columns and data[feature].nunique() == 2:
+            # Create a DataFrame to hold predictions and feature values
+            data_with_predictions = pd.DataFrame({
+                feature: data[feature].values,
+                'Predicted': y_pred
+            })
+            
+            # Plot distributions for predicted stroke cases
+            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=False, label='Stroke Predicted', color='green', bins=2)
+            sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=False, label='No Stroke Predicted', color='red', bins=2)
+            
+            plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
+            plt.xlabel(feature)
+            plt.ylabel('Count')
+            plt.legend()
+            st.pyplot()
+        else:
+            st.write(f"{feature} is not a valid feature for distribution plotting.")
 
     # Plot distributions for each binary feature
     binary_features = X_balanced.columns
