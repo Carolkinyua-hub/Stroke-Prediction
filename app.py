@@ -1,74 +1,91 @@
+
 import streamlit as st
 import pandas as pd
 import joblib
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.utils import shuffle
 import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
-# Load the pre-trained model
-model_path = 'path_to_your_pretrained_model.joblib'
-scaler_path = 'path_to_your_scaler.joblib'
+# Streamlit app configuration
+st.title('Stroke Prediction App')
 
-model = joblib.load(model_path)
-scaler = joblib.load(scaler_path)
+# Upload CSV file
+uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
 
-def preprocess_data(df):
-    # Ensure you have the required columns
-    required_columns = ['HeartDiseaseorAttack', 'HighBP', 'BMI', 'GenHlth', 'MentHlth',
-                        'PhysHlth', 'DiffWalk', 'Age', 'Education', 'Income']
-    df = df[required_columns]
-    df_scaled = scaler.transform(df)
-    return df_scaled
+if uploaded_file is not None:
+    # Load the data
+    data = pd.read_csv(uploaded_file)
 
-def predict(model, data):
-    return model.predict_proba(data)[:, 1]
+    # Separate classes
+    majority_class = data[data['Stroke'] == 0]
+    minority_class = data[data['Stroke'] == 1]
 
-def visualize_data(df):
-    st.subheader("Prevalence vs Features")
+    # Downsample the majority class
+    majority_downsampled = majority_class.sample(n=len(minority_class), random_state=42)
 
-    features = ['HeartDiseaseorAttack', 'HighBP', 'BMI', 'GenHlth', 'MentHlth',
-                'PhysHlth', 'DiffWalk', 'Age', 'Education', 'Income']
-    
-    for feature in features:
-        st.subheader(f"{feature} vs Stroke Prevalence")
-        fig, ax = plt.subplots()
-        df[feature].value_counts().plot(kind='bar', ax=ax, color='skyblue')
-        ax.set_title(f"{feature} Distribution")
-        ax.set_xlabel(feature)
-        ax.set_ylabel('Count')
-        st.pyplot(fig)
+    # Combine the minority class with the downsampled majority class
+    balanced_df = pd.concat([minority_class, majority_downsampled])
 
-def main():
-    st.title("Stroke Prediction App")
+    # Shuffle the dataset to ensure the classes are mixed
+    balanced_df = shuffle(balanced_df, random_state=42).reset_index(drop=True)
 
-    # Data Upload
-    uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
-    
-    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        st.write("Uploaded Data:")
-        st.write(df.head())
+    # Separate features and target in the balanced dataset
+    X_balanced = balanced_df.drop('Stroke', axis=1)  # Features
+    y = balanced_df['Stroke']  # Target variable
 
-        # Data Preprocessing
-        st.subheader("Data Preprocessing")
-        try:
-            df_scaled = preprocess_data(df)
-            st.write("Preprocessed Data:")
-            st.write(df_scaled[:5])
-        except KeyError as e:
-            st.error(f"Error in preprocessing: Missing column {e}")
-            return
+    # Scale the data
+    scaler = MinMaxScaler()
+    X_scaled = scaler.fit_transform(X_balanced)
 
-        # Model Prediction
-        st.subheader("Model Prediction")
-        predictions = predict(model, df_scaled)
-        df['Stroke Probability'] = predictions
-        st.write("Prediction Results:")
-        st.write(df[['Stroke Probability']].head())
+    # Load the pre-trained Neural Network model
+    model = joblib.load('neural_network_model_selected_features.joblib')
 
-        # Visualization
-        st.subheader("Visualizations")
-        visualize_data(df)
+    # Make predictions on the data
+    y_pred_prob = model.predict_proba(X_scaled)[:, 1]
+    y_pred = model.predict(X_scaled)
 
-if __name__ == "__main__":
-    main()
+    # Display statistics
+    st.write(f"Stroke Prevalence: {y.mean() * 100:.2f}%")
+
+    # Visualize feature statistics
+    st.subheader('Feature Statistics')
+    feature_stats = pd.DataFrame({
+        'Feature': X_balanced.columns,
+        'Mean': X_balanced.mean(),
+        'Standard Deviation': X_balanced.std()
+    })
+    st.write(feature_stats)
+
+    # Plot stroke prevalence distribution
+    st.subheader('Stroke Prevalence Distribution')
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data['Stroke'], kde=False, bins=2)
+    plt.title('Distribution of Stroke')
+    plt.xlabel('Stroke')
+    plt.ylabel('Count')
+    st.pyplot()
+
+    # Plot ROC Curve if predictions are available
+    from sklearn.metrics import roc_curve, auc
+
+    fpr, tpr, _ = roc_curve(y, y_pred_prob)
+    roc_auc = auc(fpr, tpr)
+
+    st.subheader('ROC Curve')
+    plt.figure(figsize=(10, 6))
+    plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='red', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC)')
+    plt.legend(loc='lower right')
+    st.pyplot()
+else:
+    st.write("Please upload a CSV file.")
+
+
+
