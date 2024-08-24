@@ -3,13 +3,13 @@ import pandas as pd
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
 # Streamlit app configuration
-st.title('Stroke Prediction Dashboard')
+st.title('Stroke Prediction App')
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
@@ -46,33 +46,57 @@ if uploaded_file is not None:
     y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
-    # Plot confusion matrix
+    # Display stroke prevalence
+    st.write(f"Stroke Prevalence: {y.mean() * 100:.2f}%")
+
+    # Plot ROC Curve
+    from sklearn.metrics import roc_curve, auc
+
+    fpr, tpr, _ = roc_curve(y, y_pred_prob)
+    roc_auc = auc(fpr, tpr)
+
+    st.subheader('ROC Curve')
+    plt.figure(figsize=(10, 6))
+    plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='red', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC)')
+    plt.legend(loc='lower right')
+    st.pyplot()
+
+    # Confusion Matrix
     st.subheader('Confusion Matrix')
-    cm = confusion_matrix(y, y_pred, labels=[0, 1])
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['No Stroke', 'Stroke'])
+    cm = confusion_matrix(y, y_pred)
     plt.figure(figsize=(8, 6))
-    disp.plot(cmap=plt.cm.Blues, values_format='d')
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, 
+                xticklabels=['No Stroke', 'Stroke'], 
+                yticklabels=['No Stroke', 'Stroke'])
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix')
     st.pyplot()
 
-    # Plot stroke prevalence distribution
-    st.subheader('Stroke Prevalence Distribution')
-    plt.figure(figsize=(8, 6))
-    sns.histplot(data['Stroke'], kde=False, bins=2, color='skyblue')
-    plt.title('Distribution of Stroke')
-    plt.xlabel('Stroke')
-    plt.ylabel('Count')
-    st.pyplot()
+    # Distribution plots for each feature
+    st.subheader('Feature Distribution for Predicted Stroke Cases')
 
-    # Plot distribution of stroke-predicted cases for each feature
-    st.subheader('Feature Distributions for Predicted Stroke Cases')
-    for feature in X_balanced.columns:
+    # Function to plot distribution of a feature based on predictions
+    def plot_feature_distribution(feature):
         plt.figure(figsize=(10, 6))
-        sns.histplot(data=data, x=feature, hue='Stroke', multiple='stack', palette='Set2')
-        plt.title(f'Distribution of {feature} by Stroke Prediction')
+        sns.histplot(data[feature][y_pred == 1], kde=True, label='Stroke Predicted', color='green', bins=20)
+        sns.histplot(data[feature][y_pred == 0], kde=True, label='No Stroke Predicted', color='red', bins=20)
+        plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
         plt.xlabel(feature)
-        plt.ylabel('Count')
-        plt.legend(title='Stroke', labels=['No Stroke', 'Stroke'])
+        plt.ylabel('Frequency')
+        plt.legend()
         st.pyplot()
+
+    # Plot distributions for each binary feature
+    binary_features = X_balanced.columns
+    for feature in binary_features:
+        plot_feature_distribution(feature)
 
 else:
     st.write("Please upload a CSV file.")
