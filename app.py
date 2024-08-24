@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import joblib
@@ -7,6 +6,7 @@ from sklearn.utils import shuffle
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from sklearn.metrics import roc_curve, auc
 
 # Streamlit app configuration
 st.title('Stroke Prediction App')
@@ -67,9 +67,7 @@ if uploaded_file is not None:
     plt.ylabel('Count')
     st.pyplot()
 
-    # Plot ROC Curve if predictions are available
-    from sklearn.metrics import roc_curve, auc
-
+    # Plot ROC Curve
     fpr, tpr, _ = roc_curve(y, y_pred_prob)
     roc_auc = auc(fpr, tpr)
 
@@ -84,8 +82,20 @@ if uploaded_file is not None:
     plt.title('Receiver Operating Characteristic (ROC)')
     plt.legend(loc='lower right')
     st.pyplot()
+
+    # Plot scatter plots for features
+    st.subheader('Feature Scatter Plots')
+    features = X_balanced.columns
+    selected_features = st.multiselect("Select features for scatter plots", options=features)
+
+    if len(selected_features) == 2:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.scatterplot(data=balanced_df, x=selected_features[0], y=selected_features[1], hue='Stroke', palette='viridis', alpha=0.7)
+        plt.title(f'Scatter Plot of {selected_features[0]} vs {selected_features[1]}')
+        plt.xlabel(selected_features[0])
+        plt.ylabel(selected_features[1])
+        st.pyplot()
+    elif len(selected_features) == 0:
+        st.write("Select two features to see the scatter plot.")
 else:
     st.write("Please upload a CSV file.")
-
-
-
