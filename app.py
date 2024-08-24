@@ -93,7 +93,6 @@ if uploaded_file is not None:
         # Distribution plots for each feature
         st.subheader('Feature Distribution for Predicted Stroke Cases')
 
-        # Function to plot distribution of a feature based on predictions
         def plot_feature_distribution(feature):
             plt.figure(figsize=(10, 6))
             
@@ -138,6 +137,32 @@ if uploaded_file is not None:
         features = X_balanced.columns
         for feature in features:
             plot_feature_distribution(feature)
+
+        # Group data by feature and stroke status and plot heatmaps
+        st.subheader('Feature-wise Stroke Status Percentages')
+
+        def plot_feature_heatmap(feature):
+            if feature not in X_balanced.columns:
+                st.write(f"{feature} is not a valid feature in the dataset.")
+                return
+            
+            # Group and calculate percentages
+            feature_data = pd.concat([X_balanced[feature], y], axis=1)
+            feature_summary = feature_data.groupby([feature, 'Stroke']).size().unstack(fill_value=0)
+            total_counts = feature_summary.sum()
+            feature_percentages = feature_summary.div(total_counts, axis=1) * 100
+
+            # Plot heatmap
+            plt.figure(figsize=(10, 6))
+            sns.heatmap(feature_percentages, annot=True, fmt='.2f', cmap='coolwarm', cbar_kws={'label': 'Percentage (%)'})
+            plt.title(f'{feature} Stroke Status Percentages')
+            plt.xlabel('Stroke Status')
+            plt.ylabel(feature)
+            st.pyplot()
+
+        # Plot heatmaps for each feature
+        for feature in features:
+            plot_feature_heatmap(feature)
 
 else:
     st.write("Please upload a CSV file.")
