@@ -83,8 +83,8 @@ if uploaded_file is not None:
         cm = confusion_matrix(y, y_pred)
         plt.figure(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, 
-                    xticklabels=['No Stroke', 'Stroke'], 
-                    yticklabels=['No Stroke', 'Stroke'])
+                    xticklabels=['No Stroke (0)', 'Stroke (1)'], 
+                    yticklabels=['No Stroke (0)', 'Stroke (1)'])
         plt.xlabel('Predicted Label')
         plt.ylabel('True Label')
         plt.title('Confusion Matrix')
@@ -107,7 +107,7 @@ if uploaded_file is not None:
             # Plot heatmap
             plt.figure(figsize=(10, 6))
             sns.heatmap(feature_percentages, annot=True, fmt='.2f', cmap='coolwarm', cbar_kws={'label': 'Percentage (%)'},
-                        xticklabels=['No Stroke', 'Stroke'], yticklabels=[0, 1])
+                        xticklabels=['No Stroke (0)', 'Stroke (1)'], yticklabels=[0, 1])
             plt.title(f'{feature} Stroke Status Percentages')
             plt.xlabel('Stroke Status')
             plt.ylabel(feature)
