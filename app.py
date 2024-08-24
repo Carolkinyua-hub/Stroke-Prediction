@@ -83,19 +83,29 @@ if uploaded_file is not None:
     plt.legend(loc='lower right')
     st.pyplot()
 
-    # Plot scatter plots for features
-    st.subheader('Feature Scatter Plots')
-    features = X_balanced.columns
-    selected_features = st.multiselect("Select features for scatter plots", options=features)
+    # Plot stroke predictions
+    st.subheader('Stroke Prediction Counts')
+    prediction_df = pd.DataFrame({
+        'Actual Stroke': y,
+        'Predicted Stroke': y_pred
+    })
+    plt.figure(figsize=(12, 6))
+    sns.countplot(data=prediction_df, x='Predicted Stroke', hue='Actual Stroke')
+    plt.title('Count of Predicted Stroke Cases by Actual Stroke')
+    plt.xlabel('Predicted Stroke')
+    plt.ylabel('Count')
+    st.pyplot()
 
-    if len(selected_features) == 2:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(data=balanced_df, x=selected_features[0], y=selected_features[1], hue='Stroke', palette='viridis', alpha=0.7)
-        plt.title(f'Scatter Plot of {selected_features[0]} vs {selected_features[1]}')
-        plt.xlabel(selected_features[0])
-        plt.ylabel(selected_features[1])
+    # Plot features comparing predicted stroke cases
+    st.subheader('Feature Distributions by Predicted Stroke')
+    features = X_balanced.columns
+    for feature in features:
+        plt.figure(figsize=(12, 6))
+        sns.boxplot(x=prediction_df['Predicted Stroke'], y=X_balanced[feature])
+        plt.title(f'{feature} Distribution by Predicted Stroke')
+        plt.xlabel('Predicted Stroke')
+        plt.ylabel(feature)
         st.pyplot()
-    elif len(selected_features) == 0:
-        st.write("Select two features to see the scatter plot.")
+
 else:
     st.write("Please upload a CSV file.")
