@@ -90,54 +90,6 @@ if uploaded_file is not None:
         plt.title('Confusion Matrix')
         st.pyplot()
 
-        # Distribution plots for each feature
-        st.subheader('Feature Distribution for Predicted Stroke Cases')
-
-        def plot_feature_distribution(feature):
-            plt.figure(figsize=(10, 6))
-            
-            # Check if the feature is valid
-            if feature not in X_balanced.columns:
-                st.write(f"{feature} is not a valid feature in the dataset.")
-                return
-            
-            # Ensure y_pred is properly aligned with X_balanced
-            if len(y_pred) != len(X_balanced):
-                st.write("Mismatch between length of predictions and dataset.")
-                return
-
-            # Create DataFrame for plotting
-            try:
-                data_with_predictions = pd.DataFrame({
-                    feature: X_balanced[feature].values,
-                    'Predicted': y_pred
-                })
-            except Exception as e:
-                st.write(f"Error creating DataFrame: {e}")
-                return
-
-            # Plot distributions based on feature type
-            if X_balanced[feature].nunique() == 2:  # Binary features
-                sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=False, label='Stroke Predicted', color='green', bins=2)
-                sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=False, label='No Stroke Predicted', color='red', bins=2)
-                plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
-                plt.xlabel(feature)
-                plt.ylabel('Count')
-            else:  # Non-binary features
-                sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 1][feature], kde=True, label='Stroke Predicted', color='green')
-                sns.histplot(data_with_predictions[data_with_predictions['Predicted'] == 0][feature], kde=True, label='No Stroke Predicted', color='red')
-                plt.title(f'Distribution of {feature} for Predicted Stroke Cases')
-                plt.xlabel(feature)
-                plt.ylabel('Density')
-
-            plt.legend()
-            st.pyplot()
-
-        # Plot distributions for each feature
-        features = X_balanced.columns
-        for feature in features:
-            plot_feature_distribution(feature)
-
         # Group data by feature and stroke status and plot heatmaps
         st.subheader('Feature-wise Stroke Status Percentages')
 
@@ -154,13 +106,15 @@ if uploaded_file is not None:
 
             # Plot heatmap
             plt.figure(figsize=(10, 6))
-            sns.heatmap(feature_percentages, annot=True, fmt='.2f', cmap='coolwarm', cbar_kws={'label': 'Percentage (%)'})
+            sns.heatmap(feature_percentages, annot=True, fmt='.2f', cmap='coolwarm', cbar_kws={'label': 'Percentage (%)'},
+                        xticklabels=['No Stroke', 'Stroke'], yticklabels=[0, 1])
             plt.title(f'{feature} Stroke Status Percentages')
             plt.xlabel('Stroke Status')
             plt.ylabel(feature)
             st.pyplot()
 
         # Plot heatmaps for each feature
+        features = X_balanced.columns
         for feature in features:
             plot_feature_heatmap(feature)
 
