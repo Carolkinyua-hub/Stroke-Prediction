@@ -113,7 +113,7 @@ if uploaded_file is not None:
     X_factors = fa.fit_transform(X_scaled)
     
     # Get factor loadings
-    factor_loadings = pd.DataFrame(fa.components_.T, columns=[f'Factor {i+1}' for i in range(fa.n_components_)], index=[f'Feature {i+1}' for i in range(X_scaled.shape[1])])
+    factor_loadings = pd.DataFrame(fa.components_.T, columns=[f'Factor {i+1}' for i in range(fa.n_components_)], index=X_balanced.columns)
 
     # Normalize factor loadings to percentages
     factor_loadings_percentage = factor_loadings * 100
