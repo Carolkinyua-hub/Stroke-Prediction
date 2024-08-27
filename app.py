@@ -49,7 +49,6 @@ if uploaded_file is not None:
 
     # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
-    st.write("Classification Report Keys:", report.keys())
 
     # Determine positive label (assuming binary classification)
     positive_labels = [label for label in report if label not in ['accuracy', 'macro avg', 'weighted avg']]
