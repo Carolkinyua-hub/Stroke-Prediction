@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
+from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -49,13 +49,26 @@ if uploaded_file is not None:
 
     # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
-    accuracy = (y == y_pred).mean()
-    metrics = {
-        'accuracy': accuracy * 100,
-        'precision': report['1']['precision'] * 100,
-        'recall': report['1']['recall'] * 100,
-        'f1-score': report['1']['f1-score'] * 100
-    }
+    
+    # Extract metrics for the positive class (assuming '1' is the positive class)
+    positive_label = '1' if '1' in report else 'positive'
+    
+    # Ensure the positive label exists in the report
+    if positive_label in report:
+        metrics = {
+            'accuracy': accuracy_score(y, y_pred) * 100,
+            'precision': report[positive_label]['precision'] * 100,
+            'recall': report[positive_label]['recall'] * 100,
+            'f1-score': report[positive_label]['f1-score'] * 100
+        }
+    else:
+        st.write(f"Metrics for label '{positive_label}' not found in the report.")
+        metrics = {
+            'accuracy': accuracy_score(y, y_pred) * 100,
+            'precision': 0,
+            'recall': 0,
+            'f1-score': 0
+        }
 
     # Create DataFrame for metrics
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
@@ -102,5 +115,3 @@ if uploaded_file is not None:
 
 else:
     st.write("Please upload a CSV file.")
-
-
