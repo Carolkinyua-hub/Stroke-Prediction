@@ -1,16 +1,17 @@
 import streamlit as st
 import pandas as pd
-import joblib
+import numpy as np
+from sklearn.decomposition import FactorAnalysis
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
 from sklearn.metrics import classification_report, accuracy_score
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
 from sklearn.inspection import permutation_importance
+import joblib
 
 # Streamlit app configuration
-st.title('Stroke Prediction App')
+st.title('Stroke Prediction and Factor Analysis App')
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
@@ -18,24 +19,18 @@ uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
 if uploaded_file is not None:
     # Load the data
     data = pd.read_csv(uploaded_file)
-
-    # Separate classes
+    
+    # Separate classes and perform downsampling
     majority_class = data[data['Stroke'] == 0]
     minority_class = data[data['Stroke'] == 1]
-
-    # Downsample the majority class
     majority_downsampled = majority_class.sample(n=len(minority_class), random_state=42)
-
-    # Combine the minority class with the downsampled majority class
     balanced_df = pd.concat([minority_class, majority_downsampled])
-
-    # Shuffle the dataset to ensure the classes are mixed
     balanced_df = shuffle(balanced_df, random_state=42).reset_index(drop=True)
-
+    
     # Separate features and target in the balanced dataset
     X_balanced = balanced_df.drop('Stroke', axis=1)  # Features
     y = balanced_df['Stroke']  # Target variable
-
+    
     # Scale the data
     scaler = MinMaxScaler()
     X_scaled = scaler.fit_transform(X_balanced)
@@ -49,7 +44,7 @@ if uploaded_file is not None:
 
     # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
-
+    
     # Determine positive label (assuming binary classification)
     positive_labels = [label for label in report if label not in ['accuracy', 'macro avg', 'weighted avg']]
     
@@ -109,6 +104,41 @@ if uploaded_file is not None:
     axes[1].set_xlabel('Importance (%)')
     axes[1].set_ylabel('Feature')
     axes[1].set_xlim(0, 100)
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # Perform Factor Analysis
+    fa = FactorAnalysis(n_components=5, random_state=42)
+    X_factors = fa.fit_transform(X_balanced)
+    
+    # Get factor loadings
+    factor_loadings = pd.DataFrame(fa.components_.T, columns=[f'Factor {i+1}' for i in range(fa.n_components_)], index=X_balanced.columns)
+    
+    # Normalize factor loadings to percentages
+    factor_loadings_percentage = factor_loadings * 100
+    
+    # Display factor loadings
+    st.write("Factor Loadings (in Percentages):")
+    st.dataframe(factor_loadings_percentage)
+    
+    # Define the data for pie charts based on factor loadings
+    def plot_pie_chart(ax, labels, sizes, title):
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=sns.color_palette('pastel'))
+        ax.axis('equal')
+        ax.set_title(title)
+    
+    # Create pie charts for each factor
+    fig, axes = plt.subplots(3, 2, figsize=(14, 12))
+
+    for i in range(5):
+        # Extract top features for each factor
+        top_features = factor_loadings_percentage[f'Factor {i+1}'].abs().sort_values(ascending=False).head(10)
+        labels = top_features.index
+        sizes = top_features.values
+
+        # Plot pie chart
+        plot_pie_chart(axes[i // 2, i % 2], labels, sizes, f'Factor {i+1}')
 
     plt.tight_layout()
     st.pyplot(fig)
