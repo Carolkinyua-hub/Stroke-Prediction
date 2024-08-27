@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.inspection import permutation_importance
-from sklearn.decomposition import FactorAnalysis
 
 # Streamlit app configuration
 st.title('Stroke Prediction App')
@@ -90,18 +89,59 @@ if uploaded_file is not None:
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-    # Factor Analysis
-    fa = FactorAnalysis(n_components=5, random_state=42)
-    fa.fit(X_scaled)
-    factor_loadings = pd.DataFrame(fa.components_.T, columns=[f'Factor {i+1}' for i in range(fa.n_components_)], index=X_balanced.columns)
+    # Pie charts for factors
+    def plot_pie_chart(ax, labels, sizes, title):
+        sizes = np.clip(sizes, 0, None)  # Ensure sizes are non-negative
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=sns.color_palette('pastel'))
+        ax.axis('equal')
+        ax.set_title(title)
+
+    # Data for pie charts
+    factor_1 = {
+        'labels': ['HeartDiseaseorAttack', 'BMI', 'GenHlth', 'PhysHlth', 'MentHlth', 'Diabetes', 'NoDocbcCost', 'DiffWalk'],
+        'sizes': [0.262, 0.243, 0.756, 0.733, 0.493, 0.277, 0.294, 0.587],
+        'title': 'Factor 1: General Health Status and Healthcare Access'
+    }
     
-    # Convert factor loadings to percentages
-    factor_loadings_percentage = factor_loadings * 100
+    factor_2 = {
+        'labels': ['HighBP', 'HighChol', 'AnyHealthcare', 'Age', 'Education', 'Income'],
+        'sizes': [-0.296, -0.199, -0.235, -0.659, 0.118, 0.037],
+        'title': 'Factor 2: Hypertension, Cholesterol, and Healthcare Access'
+    }
     
-    # Plotting
-    fig, axes = plt.subplots(3, 1, figsize=(14, 18))
+    factor_3 = {
+        'labels': ['Education', 'Income', 'Veggies', 'Smoker'],
+        'sizes': [-0.489, -0.464, -0.226, 0.070],
+        'title': 'Factor 3: Socioeconomic Status and Lifestyle Factors'
+    }
     
-    # Classification Metrics Bar Chart
+    factor_4 = {
+        'labels': ['BMI', 'Diabetes', 'HighChol'],
+        'sizes': [0.497, 0.370, 0.200],
+        'title': 'Factor 4: Metabolic and Obesity-Related Health Issues'
+    }
+    
+    factor_5 = {
+        'labels': ['Fruits', 'Sex', 'Smoker', 'DiffWalk'],
+        'sizes': [0.216, 0.468, -0.288, 0.123],
+        'title': 'Factor 5: Lifestyle and Demographic Characteristics'
+    }
+
+    # Create pie charts
+    fig, axes = plt.subplots(3, 2, figsize=(14, 12))
+    plot_pie_chart(axes[0, 0], factor_1['labels'], factor_1['sizes'], factor_1['title'])
+    plot_pie_chart(axes[0, 1], factor_2['labels'], factor_2['sizes'], factor_2['title'])
+    plot_pie_chart(axes[1, 0], factor_3['labels'], factor_3['sizes'], factor_3['title'])
+    plot_pie_chart(axes[1, 1], factor_4['labels'], factor_4['sizes'], factor_4['title'])
+    plot_pie_chart(axes[2, 0], factor_5['labels'], factor_5['sizes'], factor_5['title'])
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # Plot metrics and feature importance
+    fig, axes = plt.subplots(2, 1, figsize=(12, 14))
+    
+    # Plot metrics
     sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
     for index, value in enumerate(metrics_df['Percentage']):
         axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
@@ -110,7 +150,7 @@ if uploaded_file is not None:
     axes[0].set_ylabel('Metric')
     axes[0].set_xlim(0, 100)
 
-    # Feature Importance Bar Chart
+    # Plot feature importance
     sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
     for index, value in enumerate(importance_df['Importance']):
         axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
@@ -119,16 +159,6 @@ if uploaded_file is not None:
     axes[1].set_ylabel('Feature')
     axes[1].set_xlim(0, 100)
 
-    # Factor Analysis Bar Charts
-    num_factors = factor_loadings_percentage.shape[1]
-    for i in range(num_factors):
-        ax = axes[2].subplot(num_factors, 1, i + 1)
-        sns.barplot(x=factor_loadings_percentage.index, y=factor_loadings_percentage[f'Factor {i+1}'], ax=ax, palette='coolwarm')
-        ax.set_title(f'Factor {i+1} Loadings in Percentages')
-        ax.set_xlabel('Feature')
-        ax.set_ylabel('Loading (%)')
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-    
     plt.tight_layout()
     st.pyplot(fig)
 
