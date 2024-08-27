@@ -104,5 +104,3 @@ else:
     st.write("Please upload a CSV file.")
 
 
-else:
-    st.write("Please upload a CSV file.")
