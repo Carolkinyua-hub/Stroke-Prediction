@@ -115,6 +115,7 @@ if uploaded_file is not None:
 
     # Pie charts for factors
     def plot_pie_chart(ax, labels, sizes, title):
+        sizes = np.clip(sizes, 0, None)  # Ensure sizes are non-negative
         ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=sns.color_palette('pastel'))
         ax.axis('equal')
         ax.set_title(title)
