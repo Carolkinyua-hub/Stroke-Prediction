@@ -90,7 +90,7 @@ if uploaded_file is not None:
         'Feature': features,
         'Importance': importances_percentage
     })
-    importance_df = importance_df.sort_values(by='Importance', ascending=False)
+    importance_df = importance_df.sort_values(by 'Importance', ascending=False)
 
     # Plot metrics and feature importance
     fig, axes = plt.subplots(2, 1, figsize=(12, 14))
@@ -112,59 +112,6 @@ if uploaded_file is not None:
     axes[1].set_xlabel('Importance (%)')
     axes[1].set_ylabel('Feature')
     axes[1].set_xlim(0, 100)
-
-    plt.tight_layout()
-    st.pyplot(fig)
-
-    # Pie charts for factors
-    def plot_pie_chart(ax, labels, sizes, title):
-        sizes = np.clip(sizes, 0, None)  # Ensure sizes are non-negative
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=sns.color_palette('pastel'))
-        ax.axis('equal')
-        ax.set_title(title)
-
-    # Data for pie charts
-    factor_1 = {
-        'labels': ['HeartDiseaseorAttack', 'BMI', 'GenHlth', 'PhysHlth', 'MentHlth', 'Diabetes', 'NoDocbcCost', 'DiffWalk'],
-        'sizes': [0.262, 0.243, 0.756, 0.733, 0.493, 0.277, 0.294, 0.587],
-        'title': 'Factor 1: General Health Status and Healthcare Access'
-    }
-    
-    factor_2 = {
-        'labels': ['HighBP', 'HighChol', 'AnyHealthcare', 'Age', 'Education', 'Income'],
-        'sizes': [0, 0, 0, 0, 0.118, 0.037],  # Adjusted sizes for non-empty pie chart
-        'title': 'Factor 2: Hypertension, Cholesterol, and Healthcare Access'
-    }
-    
-    factor_3 = {
-        'labels': ['Education', 'Income', 'Veggies', 'Smoker'],
-        'sizes': [0, 0, 0, 0.070],  # Adjusted sizes for non-empty pie chart
-        'title': 'Factor 3: Socioeconomic Status and Lifestyle Factors'
-    }
-    
-    factor_4 = {
-        'labels': ['BMI', 'Diabetes', 'HighChol'],
-        'sizes': [0.497, 0.370, 0.200],
-        'title': 'Factor 4: Metabolic and Obesity-Related Health Issues'
-    }
-    
-    factor_5 = {
-        'labels': ['Fruits', 'Sex', 'Smoker', 'DiffWalk'],
-        'sizes': [0.216, 0.468, 0, 0.123],  # Adjusted sizes for non-empty pie chart
-        'title': 'Factor 5: Lifestyle and Demographic Characteristics'
-    }
-
-    # Adjust layout for better spacing
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))  # 2 rows, 3 columns layout
-    
-    plot_pie_chart(axes[0, 0], factor_1['labels'], factor_1['sizes'], factor_1['title'])
-    plot_pie_chart(axes[0, 1], factor_2['labels'], factor_2['sizes'], factor_2['title'])
-    plot_pie_chart(axes[0, 2], factor_4['labels'], factor_4['sizes'], factor_4['title'])
-    plot_pie_chart(axes[1, 0], factor_3['labels'], factor_3['sizes'], factor_3['title'])
-    plot_pie_chart(axes[1, 1], factor_5['labels'], factor_5['sizes'], factor_5['title'])
-
-    # Remove empty plot (axes[1, 2])
-    axes[1, 2].axis('off')
 
     plt.tight_layout()
     st.pyplot(fig)
