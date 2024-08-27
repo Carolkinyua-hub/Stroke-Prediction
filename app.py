@@ -102,3 +102,7 @@ if uploaded_file is not None:
 
 else:
     st.write("Please upload a CSV file.")
+
+
+else:
+    st.write("Please upload a CSV file.")
