@@ -154,13 +154,17 @@ if uploaded_file is not None:
         'title': 'Factor 5: Lifestyle and Demographic Characteristics'
     }
 
-    # Increase the size of pie charts
-    fig, axes = plt.subplots(3, 2, figsize=(18, 16))  # Adjust the figsize for larger charts
+    # Adjust layout for better spacing
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))  # 2 rows, 3 columns layout
+    
     plot_pie_chart(axes[0, 0], factor_1['labels'], factor_1['sizes'], factor_1['title'])
     plot_pie_chart(axes[0, 1], factor_2['labels'], factor_2['sizes'], factor_2['title'])
+    plot_pie_chart(axes[0, 2], factor_4['labels'], factor_4['sizes'], factor_4['title'])
     plot_pie_chart(axes[1, 0], factor_3['labels'], factor_3['sizes'], factor_3['title'])
-    plot_pie_chart(axes[1, 1], factor_4['labels'], factor_4['sizes'], factor_4['title'])
-    plot_pie_chart(axes[2, 0], factor_5['labels'], factor_5['sizes'], factor_5['title'])
+    plot_pie_chart(axes[1, 1], factor_5['labels'], factor_5['sizes'], factor_5['title'])
+
+    # Remove empty plot (axes[1, 2])
+    axes[1, 2].axis('off')
 
     plt.tight_layout()
     st.pyplot(fig)
