@@ -16,10 +16,8 @@ The Stroke Prediction App is a Streamlit-based web application designed to predi
   - Makes predictions on the scaled features.
 - **Evaluation and Visualization**:
   - Displays stroke prevalence.
-  - Plots ROC Curve to show model performance.
-  - Displays Confusion Matrix to visualize true vs. predicted labels.
 - **Feature-wise Analysis**:
-  - Generates heatmaps showing the percentage distribution of stroke status (0 for No Stroke and 1 for Stroke) for each feature.
+  - Generates feature importance.
 
 ## Installation
 
