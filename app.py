@@ -74,6 +74,9 @@ if uploaded_file is not None:
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
     metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
 
+    # Ensure no empty or zero values cause an empty bar
+    metrics_df = metrics_df[metrics_df['Percentage'] > 0]
+
     # Compute permutation importance
     results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
     importances = results.importances_mean
@@ -88,6 +91,30 @@ if uploaded_file is not None:
         'Importance': importances_percentage
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
+
+    # Plot metrics and feature importance
+    fig, axes = plt.subplots(2, 1, figsize=(12, 14))
+    
+    # Plot metrics
+    sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
+    for index, value in enumerate(metrics_df['Percentage']):
+        axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[0].set_title('Model Evaluation Metrics in Percentages')
+    axes[0].set_xlabel('Percentage (%)')
+    axes[0].set_ylabel('Metric')
+    axes[0].set_xlim(0, 100)
+
+    # Plot feature importance
+    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
+    for index, value in enumerate(importance_df['Importance']):
+        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[1].set_title('Permutation Feature Importance in Percentages')
+    axes[1].set_xlabel('Importance (%)')
+    axes[1].set_ylabel('Feature')
+    axes[1].set_xlim(0, 100)
+
+    plt.tight_layout()
+    st.pyplot(fig)
 
     # Pie charts for factors
     def plot_pie_chart(ax, labels, sizes, title):
@@ -127,37 +154,13 @@ if uploaded_file is not None:
         'title': 'Factor 5: Lifestyle and Demographic Characteristics'
     }
 
-    # Create pie charts
-    fig, axes = plt.subplots(3, 2, figsize=(14, 12))
+    # Increase the size of pie charts
+    fig, axes = plt.subplots(3, 2, figsize=(16, 14))  # Adjust the figsize for larger charts
     plot_pie_chart(axes[0, 0], factor_1['labels'], factor_1['sizes'], factor_1['title'])
     plot_pie_chart(axes[0, 1], factor_2['labels'], factor_2['sizes'], factor_2['title'])
     plot_pie_chart(axes[1, 0], factor_3['labels'], factor_3['sizes'], factor_3['title'])
     plot_pie_chart(axes[1, 1], factor_4['labels'], factor_4['sizes'], factor_4['title'])
     plot_pie_chart(axes[2, 0], factor_5['labels'], factor_5['sizes'], factor_5['title'])
-
-    plt.tight_layout()
-    st.pyplot(fig)
-
-    # Plot metrics and feature importance
-    fig, axes = plt.subplots(2, 1, figsize=(12, 14))
-    
-    # Plot metrics
-    sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
-    for index, value in enumerate(metrics_df['Percentage']):
-        axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[0].set_title('Model Evaluation Metrics in Percentages')
-    axes[0].set_xlabel('Percentage (%)')
-    axes[0].set_ylabel('Metric')
-    axes[0].set_xlim(0, 100)
-
-    # Plot feature importance
-    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
-    for index, value in enumerate(importance_df['Importance']):
-        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[1].set_title('Permutation Feature Importance in Percentages')
-    axes[1].set_xlabel('Importance (%)')
-    axes[1].set_ylabel('Feature')
-    axes[1].set_xlim(0, 100)
 
     plt.tight_layout()
     st.pyplot(fig)
