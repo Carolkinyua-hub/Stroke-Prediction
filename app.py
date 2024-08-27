@@ -49,12 +49,13 @@ if uploaded_file is not None:
 
     # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
+    st.write("Classification Report Keys:", report.keys())
+
+    # Determine positive label (assuming binary classification)
+    positive_labels = [label for label in report if label not in ['accuracy', 'macro avg', 'weighted avg']]
     
-    # Extract metrics for the positive class (assuming '1' is the positive class)
-    positive_label = '1' if '1' in report else 'positive'
-    
-    # Ensure the positive label exists in the report
-    if positive_label in report:
+    if positive_labels:
+        positive_label = positive_labels[0]
         metrics = {
             'accuracy': accuracy_score(y, y_pred) * 100,
             'precision': report[positive_label]['precision'] * 100,
@@ -62,7 +63,7 @@ if uploaded_file is not None:
             'f1-score': report[positive_label]['f1-score'] * 100
         }
     else:
-        st.write(f"Metrics for label '{positive_label}' not found in the report.")
+        st.write("Positive label not found in the report.")
         metrics = {
             'accuracy': accuracy_score(y, y_pred) * 100,
             'precision': 0,
@@ -74,7 +75,7 @@ if uploaded_file is not None:
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
     metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
 
-    # Compute permutation importance (ensure features selection and X_test_selected are properly defined)
+    # Compute permutation importance
     results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
     importances = results.importances_mean
 
