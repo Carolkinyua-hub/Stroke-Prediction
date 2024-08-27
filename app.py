@@ -132,13 +132,13 @@ if uploaded_file is not None:
     
     factor_2 = {
         'labels': ['HighBP', 'HighChol', 'AnyHealthcare', 'Age', 'Education', 'Income'],
-        'sizes': [-0.296, -0.199, -0.235, -0.659, 0.118, 0.037],
+        'sizes': [0, 0, 0, 0, 0.118, 0.037],  # Adjusted sizes for non-empty pie chart
         'title': 'Factor 2: Hypertension, Cholesterol, and Healthcare Access'
     }
     
     factor_3 = {
         'labels': ['Education', 'Income', 'Veggies', 'Smoker'],
-        'sizes': [-0.489, -0.464, -0.226, 0.070],
+        'sizes': [0, 0, 0, 0.070],  # Adjusted sizes for non-empty pie chart
         'title': 'Factor 3: Socioeconomic Status and Lifestyle Factors'
     }
     
@@ -150,12 +150,12 @@ if uploaded_file is not None:
     
     factor_5 = {
         'labels': ['Fruits', 'Sex', 'Smoker', 'DiffWalk'],
-        'sizes': [0.216, 0.468, -0.288, 0.123],
+        'sizes': [0.216, 0.468, 0, 0.123],  # Adjusted sizes for non-empty pie chart
         'title': 'Factor 5: Lifestyle and Demographic Characteristics'
     }
 
     # Increase the size of pie charts
-    fig, axes = plt.subplots(3, 2, figsize=(16, 14))  # Adjust the figsize for larger charts
+    fig, axes = plt.subplots(3, 2, figsize=(18, 16))  # Adjust the figsize for larger charts
     plot_pie_chart(axes[0, 0], factor_1['labels'], factor_1['sizes'], factor_1['title'])
     plot_pie_chart(axes[0, 1], factor_2['labels'], factor_2['sizes'], factor_2['title'])
     plot_pie_chart(axes[1, 0], factor_3['labels'], factor_3['sizes'], factor_3['title'])
