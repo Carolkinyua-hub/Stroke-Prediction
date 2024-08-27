@@ -3,10 +3,11 @@ import pandas as pd
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-from sklearn.metrics import confusion_matrix, roc_curve, auc
+from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from sklearn.inspection import permutation_importance
 
 # Streamlit app configuration
 st.title('Stroke Prediction App')
@@ -35,11 +36,6 @@ if uploaded_file is not None:
     X_balanced = balanced_df.drop('Stroke', axis=1)  # Features
     y = balanced_df['Stroke']  # Target variable
 
-    # Check lengths
-    st.write(f"Length of balanced data: {len(balanced_df)}")
-    st.write(f"Length of X_balanced: {len(X_balanced)}")
-    st.write(f"Length of y: {len(y)}")
-
     # Scale the data
     scaler = MinMaxScaler()
     X_scaled = scaler.fit_transform(X_balanced)
@@ -51,72 +47,58 @@ if uploaded_file is not None:
     y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
-    # Check lengths again
-    st.write(f"Length of X_scaled: {len(X_scaled)}")
-    st.write(f"Length of y_pred_prob: {len(y_pred_prob)}")
-    st.write(f"Length of y_pred: {len(y_pred)}")
+    # Compute classification metrics
+    report = classification_report(y, y_pred, output_dict=True)
+    accuracy = (y == y_pred).mean()
+    metrics = {
+        'accuracy': accuracy * 100,
+        'precision': report['1']['precision'] * 100,
+        'recall': report['1']['recall'] * 100,
+        'f1-score': report['1']['f1-score'] * 100
+    }
 
-    if len(X_scaled) != len(y_pred):
-        st.write("Mismatch between length of predictions and dataset.")
-    else:
-        # Display stroke prevalence
-        st.write(f"Stroke Prevalence: {y.mean() * 100:.2f}%")
+    # Create DataFrame for metrics
+    metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
+    metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
 
-        # Plot ROC Curve
-        fpr, tpr, _ = roc_curve(y, y_pred_prob)
-        roc_auc = auc(fpr, tpr)
+    # Compute permutation importance (ensure features selection and X_test_selected are properly defined)
+    results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
+    importances = results.importances_mean
 
-        st.subheader('ROC Curve')
-        plt.figure(figsize=(10, 6))
-        plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-        plt.plot([0, 1], [0, 1], color='red', lw=2, linestyle='--')
-        plt.xlim([0.0, 1.0])
-        plt.ylim([0.0, 1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('Receiver Operating Characteristic (ROC)')
-        plt.legend(loc='lower right')
-        st.pyplot()
+    # Convert permutation importances to percentages
+    importances_percentage = importances * 100
+    features = X_balanced.columns  # Feature names
 
-        # Confusion Matrix
-        st.subheader('Confusion Matrix')
-        cm = confusion_matrix(y, y_pred)
-        plt.figure(figsize=(8, 6))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, 
-                    xticklabels=['No Stroke (0)', 'Stroke (1)'], 
-                    yticklabels=['No Stroke (0)', 'Stroke (1)'])
-        plt.xlabel('Predicted Label')
-        plt.ylabel('True Label')
-        plt.title('Confusion Matrix')
-        st.pyplot()
+    # Create DataFrame for permutation importance
+    importance_df = pd.DataFrame({
+        'Feature': features,
+        'Importance': importances_percentage
+    })
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-        # Group data by feature and stroke status and plot heatmaps
-        st.subheader('Feature-wise Stroke Status Percentages')
+    # Plot metrics and feature importance
+    fig, axes = plt.subplots(2, 1, figsize=(12, 14))
+    
+    # Plot metrics
+    sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
+    for index, value in enumerate(metrics_df['Percentage']):
+        axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[0].set_title('Model Evaluation Metrics in Percentages')
+    axes[0].set_xlabel('Percentage (%)')
+    axes[0].set_ylabel('Metric')
+    axes[0].set_xlim(0, 100)
 
-        def plot_feature_heatmap(feature):
-            if feature not in X_balanced.columns:
-                st.write(f"{feature} is not a valid feature in the dataset.")
-                return
-            
-            # Group and calculate percentages
-            feature_data = pd.concat([X_balanced[feature], y], axis=1)
-            feature_summary = feature_data.groupby([feature, 'Stroke']).size().unstack(fill_value=0)
-            total_counts = feature_summary.sum()
-            feature_percentages = feature_summary.div(total_counts, axis=1) * 100
+    # Plot feature importance
+    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
+    for index, value in enumerate(importance_df['Importance']):
+        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[1].set_title('Permutation Feature Importance in Percentages')
+    axes[1].set_xlabel('Importance (%)')
+    axes[1].set_ylabel('Feature')
+    axes[1].set_xlim(0, 100)
 
-            # Plot heatmap
-            plt.figure(figsize=(10, 6))
-            sns.heatmap(feature_percentages, annot=True, fmt='.2f', cmap='coolwarm', cbar_kws={'label': 'Percentage (%)'},
-                        xticklabels=['No Stroke (0)', 'Stroke (1)'], yticklabels=[0, 1])
-            plt.title(f'{feature} Stroke Status Percentages')
-            plt.xlabel('Stroke Status')
-            plt.ylabel(feature)
-            st.pyplot()
-
-        # Plot heatmaps for each feature
-        features = X_balanced.columns
-        for feature in features:
-            plot_feature_heatmap(feature)
+    plt.tight_layout()
+    st.pyplot(fig)
 
 else:
     st.write("Please upload a CSV file.")
