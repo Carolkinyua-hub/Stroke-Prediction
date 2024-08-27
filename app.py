@@ -90,7 +90,7 @@ if uploaded_file is not None:
         'Feature': features,
         'Importance': importances_percentage
     })
-    importance_df = importance_df.sort_values(by 'Importance', ascending=False)
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
     # Plot metrics and feature importance
     fig, axes = plt.subplots(2, 1, figsize=(12, 14))
