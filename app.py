@@ -140,7 +140,11 @@ if uploaded_file is not None:
     st.subheader('Odds Ratios for Features')
     fig_or, ax_or = plt.subplots(figsize=(10, 6))
     sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
-    
+    ax_or.set_title('Odds Ratios for Features')
+    ax_or.set_xlabel('Odds Ratio')
+    ax_or.set_ylabel('Feature')
+    st.pyplot(fig_or)
+
     # Feature Importance
     st.subheader('Feature Importance')
     fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
