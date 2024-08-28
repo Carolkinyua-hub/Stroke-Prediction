@@ -188,7 +188,7 @@ if uploaded_file is not None:
         
         - **Features with High Odds Ratios**: Features like Age, Heart Disease or Attack, and General Health have higher odds ratios, indicating they have a stronger association with stroke risk. Prioritizing these factors in preventative measures could be beneficial.
         
-        - **Monitoring and Interventions**: Regular monitoring         - **Monitoring and Interventions**: Regular monitoring of individuals with high values in significant features (such as Age and Heart Disease or Attack) could help in early detection and intervention. Implementing lifestyle changes and medical check-ups focusing on these high-risk features can potentially reduce stroke incidence.
+        - **Monitoring and Interventions**: Regular monitoring of individuals with high values in significant features (such as Age and Heart Disease or Attack) could help in early detection and intervention. Implementing lifestyle changes and medical check-ups focusing on these high-risk features can potentially reduce stroke incidence.
 
         - **Model Improvements**: Consider incorporating additional features or data sources to enhance model performance. Regularly update the model with new data to adapt to changing patterns and improve predictive accuracy.
 
