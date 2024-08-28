@@ -136,21 +136,19 @@ if uploaded_file is not None:
     })
     or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
 
-   
     # Visualize Odds Ratios
     st.subheader('Odds Ratios for Features')
     fig_or, ax_or = plt.subplots(figsize=(10, 6))
     sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
 
     # Annotate odds ratios on the bars
-   for index, value in enumerate(or_df['Odds Ratio']):
-    ax_or.text(value, index, f'{value:.2f}', va='center', fontsize=10)
+    for index, value in enumerate(or_df['Odds Ratio']):
+        ax_or.text(value, index, f'{value:.2f}', va='center', fontsize=10)
 
-   ax_or.set_title('Odds Ratios for Features')
-   ax_or.set_xlabel('Odds Ratio')
-   ax_or.set_ylabel('Feature')
-   st.pyplot(fig_or)
-
+    ax_or.set_title('Odds Ratios for Features')
+    ax_or.set_xlabel('Odds Ratio')
+    ax_or.set_ylabel('Feature')
+    st.pyplot(fig_or)
 
     # Feature Importance
     st.subheader('Feature Importance')
