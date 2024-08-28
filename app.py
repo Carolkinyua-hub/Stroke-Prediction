@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-from sklearn.metrics import classification_report, accuracy_score, roc_curve, precision_recall_curve
+from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.inspection import permutation_importance, PartialDependenceDisplay
@@ -37,12 +37,17 @@ if uploaded_file is not None:
     model = joblib.load('neural_network_model_selected_features.joblib')
 
     # Make predictions
-    y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
     # Classification report
     report = classification_report(y, y_pred, output_dict=True)
-    positive_label = '1'
+
+    # Ensure we're working with the correct label for the positive class (assuming '1' is the positive class)
+    if '1' in report:
+        positive_label = '1'
+    else:
+        positive_label = list(report.keys())[1]  # Fallback to the first label (excluding 'accuracy')
+
     metrics = {
         'accuracy': accuracy_score(y, y_pred) * 100,
         'precision': report[positive_label]['precision'] * 100,
