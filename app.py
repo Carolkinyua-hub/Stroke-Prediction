@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.inspection import permutation_importance
+import shap
 
 # Streamlit app configuration
 st.title('Stroke Prediction App')
@@ -92,8 +93,12 @@ if uploaded_file is not None:
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
+    # Initialize SHAP explainer and values
+    explainer = shap.KernelExplainer(model.predict, X_scaled)
+    shap_values = explainer.shap_values(X_scaled)
+
     # Plot metrics and feature importance
-    fig, axes = plt.subplots(2, 1, figsize=(12, 14))
+    fig, axes = plt.subplots(3, 1, figsize=(12, 18))
     
     # Plot metrics
     sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
@@ -113,8 +118,13 @@ if uploaded_file is not None:
     axes[1].set_ylabel('Feature')
     axes[1].set_xlim(0, 100)
 
-    plt.tight_layout()
+    # Plot SHAP summary
+    shap.summary_plot(shap_values, X_balanced, plot_type="bar", feature_names=features, show=False)
+    axes[2].set_title('SHAP Feature Importance')
     st.pyplot(fig)
+
+    st.write("SHAP Summary Plot")
+    shap.summary_plot(shap_values, X_balanced, feature_names=features)
 
 else:
     st.write("Please upload a CSV file.")
