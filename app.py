@@ -92,71 +92,77 @@ if uploaded_file is not None:
         'f1_score_no_stroke': report.get('0.0', {}).get('f1-score', 0) * 100
     }
 
-    # Display metrics
-    st.subheader('Model Metrics')
+    # Create DataFrame for metrics
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
     metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
-    st.write(metrics_df)
+
+    # Create dashboard layout for metrics
+    st.sidebar.header('Model Metrics')
+    st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
+    st.sidebar.write(f"### Precision (Stroke): {metrics['precision_stroke']:.2f}%")
+    st.sidebar.write(f"### Recall (Stroke): {metrics['recall_stroke']:.2f}%")
+    st.sidebar.write(f"### F1 Score (Stroke): {metrics['f1_score_stroke']:.2f}%")
+    st.sidebar.write(f"### Precision (No Stroke): {metrics['precision_no_stroke']:.2f}%")
+    st.sidebar.write(f"### Recall (No Stroke): {metrics['recall_no_stroke']:.2f}%")
+    st.sidebar.write(f"### F1 Score (No Stroke): {metrics['f1_score_no_stroke']:.2f}%")
 
     # Compute permutation importance
-    st.subheader('Feature Importance')
-    try:
-        results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
-        importances = results.importances_mean
+    results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
+    importances = results.importances_mean
 
-        # Convert permutation importances to percentages
-        importances_percentage = importances * 100
-        features = X_balanced.columns  # Feature names
+    # Convert permutation importances to percentages
+    importances_percentage = importances * 100
+    features = X_balanced.columns  # Feature names
 
-        # Create DataFrame for permutation importance
-        importance_df = pd.DataFrame({
-            'Feature': features,
-            'Importance': importances_percentage
-        })
-        importance_df = importance_df.sort_values(by='Importance', ascending=False)
+    # Create DataFrame for permutation importance
+    importance_df = pd.DataFrame({
+        'Feature': features,
+        'Importance': importances_percentage
+    })
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-        # Create dashboard layout for metrics
-        fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
-        sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma')
-        for index, value in enumerate(importance_df['Importance']):
-            ax_importance.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-        ax_importance.set_title('Permutation Feature Importance in Percentages')
-        ax_importance.set_xlabel('Importance (%)')
-        ax_importance.set_ylabel('Feature')
-        ax_importance.set_xlim(0, 100)
-        st.pyplot(fig_importance)
-    except Exception as e:
-        st.error(f"Error calculating permutation importance: {e}")
-
-    # Compute and visualize Odds Ratios
-    st.subheader('Odds Ratio Visualization')
-
-    # Fit a logistic regression model for odds ratios
+    # Compute Odds Ratios (OR) for each feature using Logistic Regression
     logistic_model = LogisticRegression()
     logistic_model.fit(X_scaled, y)
 
-    # Compute odds ratios
-    odds_ratios = np.exp(logistic_model.coef_[0])
-    features = X_balanced.columns
+    # Get coefficients and calculate odds ratios
+    coefficients = logistic_model.coef_[0]
+    odds_ratios = np.exp(coefficients)
 
     # Create DataFrame for odds ratios
     or_df = pd.DataFrame({
         'Feature': features,
         'Odds Ratio': odds_ratios
     })
-
-    # Sort odds ratios in descending order
     or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
 
-    # Create Bar Plot for Odds Ratios
+    # Visualize Odds Ratios
+    st.subheader('Odds Ratios for Features')
     fig_or, ax_or = plt.subplots(figsize=(10, 6))
     sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
-    for index, value in enumerate(or_df['Odds Ratio']):
-        ax_or.text(value + 0.1, index, f'{value:.2f}', va='center', fontsize=10)
-    ax_or.set_title('Odds Ratios for Stroke Prediction Features')
-    ax_or.set_xlabel('Odds Ratio')
-    ax_or.set_ylabel('Feature')
-    st.pyplot(fig_or)
+    
+    # Feature Importance
+    st.subheader('Feature Importance')
+    fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
+    sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma', ax=ax_importance)
+    for index, value in enumerate(importance_df['Importance']):
+        ax_importance.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    ax_importance.set_title('Permutation Feature Importance in Percentages')
+    ax_importance.set_xlabel('Importance (%)')
+    ax_importance.set_ylabel('Feature')
+    ax_importance.set_xlim(0, 100)
+    st.pyplot(fig_importance)
+
+    # Impact of Top Features on Stroke Prevalence
+    st.subheader('Impact of Top Features on Stroke Prevalence')
+    top_features = importance_df.head(5)
+    for feature in top_features['Feature']:
+        fig_feature, ax_feature = plt.subplots(figsize=(10, 4))
+        sns.lineplot(x=balanced_df[feature], y=y_pred_prob, ci=None, marker='o', ax=ax_feature)
+        ax_feature.set_title(f'Impact of {feature} on Predicted Stroke Probability')
+        ax_feature.set_xlabel(feature)
+        ax_feature.set_ylabel('Predicted Stroke Probability')
+        st.pyplot(fig_feature)
 
     # Conclusions and Recommendations
     st.subheader('Conclusions and Recommendations')
@@ -176,4 +182,4 @@ if uploaded_file is not None:
     )
 
 else:
-    st.write("Upload a CSV file to get started.")
+    st.write("Please upload a CSV file.")
