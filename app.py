@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.metrics import classification_report
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.inspection import permutation_importance
@@ -55,9 +55,10 @@ if uploaded_file is not None:
     # Filter top 5 important features
     top_features = importance_df.head(5)
 
-    # Plot feature importance
-    fig, axes = plt.subplots(2, 1, figsize=(12, 16))
+    # Plot feature importance and scatterplots
+    fig, axes = plt.subplots(len(top_features) + 1, 1, figsize=(12, 4 * (len(top_features) + 1)))
 
+    # Plot top 5 feature importances
     sns.barplot(x='Importance', y='Feature', data=top_features, ax=axes[0], palette='plasma')
     for index, value in enumerate(top_features['Importance']):
         axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
@@ -65,15 +66,12 @@ if uploaded_file is not None:
     axes[0].set_xlabel('Importance (%)')
     axes[0].set_xlim(0, 100)
 
-    # Plot feature vs. stroke prevalence
-    for feature in top_features['Feature']:
-        prevalence = balanced_df.groupby(feature)['Stroke'].mean() * 100
-        sns.lineplot(x=prevalence.index, y=prevalence.values, ax=axes[1], label=feature)
-
-    axes[1].set_title('Impact of Top Features on Stroke Prevalence')
-    axes[1].set_xlabel('Feature Value')
-    axes[1].set_ylabel('Stroke Prevalence (%)')
-    axes[1].legend(title='Feature')
+    # Scatterplots for top features
+    for i, feature in enumerate(top_features['Feature']):
+        sns.scatterplot(x=feature, y='Stroke', data=balanced_df, ax=axes[i + 1])
+        axes[i + 1].set_title(f'{feature} vs. Stroke Prevalence')
+        axes[i + 1].set_xlabel(feature)
+        axes[i + 1].set_ylabel('Stroke')
 
     plt.tight_layout()
     st.pyplot(fig)
