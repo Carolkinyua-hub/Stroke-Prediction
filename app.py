@@ -10,7 +10,8 @@ import numpy as np
 from sklearn.inspection import permutation_importance
 
 # Streamlit app configuration
-st.title('Stroke Prediction App')
+st.set_page_config(page_title="Stroke Prediction Dashboard", layout="wide")
+st.title('Stroke Prediction Dashboard')
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
@@ -18,6 +19,11 @@ uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
 if uploaded_file is not None:
     # Load the data
     data = pd.read_csv(uploaded_file)
+    
+    st.sidebar.header('Data Overview')
+    st.sidebar.write("### Dataset Sample")
+    st.sidebar.write(data.head())
+    st.sidebar.write(f"### Data Shape: {data.shape}")
 
     # Separate classes
     majority_class = data[data['Stroke'] == 0]
@@ -92,39 +98,55 @@ if uploaded_file is not None:
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-    # Plot metrics and feature importance
-    fig, axes = plt.subplots(2, 1, figsize=(12, 12))
+    # Create dashboard layout
+    st.sidebar.header('Model Metrics')
+    st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
+    st.sidebar.write(f"### Precision: {metrics['precision']:.2f}%")
+    st.sidebar.write(f"### Recall: {metrics['recall']:.2f}%")
+    st.sidebar.write(f"### F1 Score: {metrics['f1-score']:.2f}%")
 
-    # Plot metrics
-    sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
+    st.subheader('Model Evaluation Metrics')
+    fig_metrics, ax_metrics = plt.subplots(figsize=(10, 6))
+    sns.barplot(x='Percentage', y='Metric', data=metrics_df, palette='viridis')
     for index, value in enumerate(metrics_df['Percentage']):
-        axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[0].set_title('Model Evaluation Metrics in Percentages')
-    axes[0].set_xlabel('Percentage (%)')
-    axes[0].set_ylabel('Metric')
-    axes[0].set_xlim(0, 100)
+        ax_metrics.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    ax_metrics.set_title('Model Evaluation Metrics in Percentages')
+    ax_metrics.set_xlabel('Percentage (%)')
+    ax_metrics.set_ylabel('Metric')
+    ax_metrics.set_xlim(0, 100)
+    st.pyplot(fig_metrics)
 
-    # Plot feature importance
-    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
+    st.subheader('Feature Importance')
+    fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
+    sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma')
     for index, value in enumerate(importance_df['Importance']):
-        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[1].set_title('Permutation Feature Importance in Percentages')
-    axes[1].set_xlabel('Importance (%)')
-    axes[1].set_ylabel('Feature')
-    axes[1].set_xlim(0, 100)
+        ax_importance.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    ax_importance.set_title('Permutation Feature Importance in Percentages')
+    ax_importance.set_xlabel('Importance (%)')
+    ax_importance.set_ylabel('Feature')
+    ax_importance.set_xlim(0, 100)
+    st.pyplot(fig_importance)
 
-    plt.tight_layout()
-    st.pyplot(fig)
-
-    # Plot impact of top features on stroke prevalence separately
+    st.subheader('Impact of Top Features on Stroke Prevalence')
     top_features = importance_df.head(5)
     for feature in top_features['Feature']:
-        plt.figure(figsize=(10, 4))
-        sns.lineplot(x=balanced_df[feature], y=balanced_df['Stroke'], ci=None, marker='o')
-        plt.title(f'Impact of {feature} on Stroke Prevalence')
-        plt.xlabel(feature)
-        plt.ylabel('Stroke Prevalence')
-        st.pyplot(plt.gcf())
+        fig_feature, ax_feature = plt.subplots(figsize=(10, 4))
+        sns.lineplot(x=balanced_df[feature], y=balanced_df['Stroke'], ci=None, marker='o', ax=ax_feature)
+        ax_feature.set_title(f'Impact of {feature} on Stroke Prevalence')
+        ax_feature.set_xlabel(feature)
+        ax_feature.set_ylabel('Stroke Prevalence')
+        st.pyplot(fig_feature)
+
+    st.subheader('Distribution of Predicted Stroke Cases')
+    prediction_counts = pd.Series(y_pred).value_counts().reset_index()
+    prediction_counts.columns = ['Predicted Stroke', 'Count']
+
+    fig_pred, ax_pred = plt.subplots(figsize=(8, 6))
+    sns.barplot(x='Predicted Stroke', y='Count', data=prediction_counts, palette='coolwarm', ax=ax_pred)
+    ax_pred.set_title('Predicted Stroke vs Non-Stroke Cases')
+    ax_pred.set_xlabel('Predicted Stroke')
+    ax_pred.set_ylabel('Count')
+    st.pyplot(fig_pred)
 
 else:
     st.write("Please upload a CSV file.")
