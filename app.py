@@ -116,17 +116,8 @@ if uploaded_file is not None:
     plt.tight_layout()
     st.pyplot(fig)
 
-    # Plot distribution of top features separately
-    top_features = importance_df.head(5)
-    for feature in top_features['Feature']:
-        plt.figure(figsize=(10, 4))
-        sns.histplot(balanced_df[feature], kde=True, color='skyblue')
-        plt.title(f'Distribution of {feature}')
-        plt.xlabel(feature)
-        plt.ylabel('Frequency')
-        st.pyplot(plt.gcf())
-
     # Plot impact of top features on stroke prevalence separately
+    top_features = importance_df.head(5)
     for feature in top_features['Feature']:
         plt.figure(figsize=(10, 4))
         sns.lineplot(x=balanced_df[feature], y=balanced_df['Stroke'], ci=None, marker='o')
