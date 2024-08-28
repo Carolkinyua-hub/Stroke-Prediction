@@ -159,33 +159,14 @@ if uploaded_file is not None:
     st.subheader('Odds Ratios for Features')
     fig_or, ax_or = plt.subplots(figsize=(10, 6))
     sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
-    
-    # Add normal range lines
-    normal_ranges = {
-        'Age': (1.1, 1.5),
-        'HeartDiseaseorAttack': (2.0, 3.0),
-        'GenHlth': (1.0, 2.0),
-        'HighBP': (1.5, 2.0),
-        'DiffWalk': (1.5, 2.0),
-        'PhysHlth': (1.0, 2.0),
-        'MentHlth': (1.0, 2.0),
-        'Education': (1.0, 1.5),
-        'BMI': (1.0, 1.5),
-        'Income': (1.0, 1.5)
-    }
-    
-    for feature, (low, high) in normal_ranges.items():
-        if feature in or_df['Feature'].values:
-            feature_row = or_df[or_df['Feature'] == feature]
-            ax_or.axvline(x=low, color='r', linestyle='--')
-            ax_or.axvline(x=high, color='r', linestyle='--')
-            # Adding text annotation
-            ax_or.text(low + 0.1, -0.1, f'Normal Range: {low} - {high}', color='r', fontsize=10)
-    
+
     # Add annotations for odds ratios
     for index, row in or_df.iterrows():
         ax_or.text(row['Odds Ratio'] + 0.1, index, f'{row["Odds Ratio"]:.2f}', va='center', fontsize=10)
-    
+
+    ax_or.set_title('Odds Ratios for Stroke Risk Factors')
+    ax_or.set_xlabel('Odds Ratio')
+    ax_or.set_ylabel('Feature')
     st.pyplot(fig_or)
 
     # Conclusions and Recommendations
