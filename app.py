@@ -56,6 +56,9 @@ if uploaded_file is not None:
     y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
+    # Convert y_pred to a Pandas Series for mapping
+    y_pred_series = pd.Series(y_pred)
+
     # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
 
@@ -124,8 +127,8 @@ if uploaded_file is not None:
 
     st.subheader('Distribution of Predicted Stroke Cases')
     prediction_df = pd.DataFrame({
-        'True Stroke': y.map({0.0: 'No Stroke', 1.0: 'Stroke'}), 
-        'Predicted Stroke': y_pred.map({0.0: 'No Stroke', 1.0: 'Stroke'})
+        'True Stroke': data['Stroke_Label'], 
+        'Predicted Stroke': y_pred_series.map({0.0: 'No Stroke', 1.0: 'Stroke'})
     })
     prediction_counts = prediction_df['Predicted Stroke'].value_counts().reset_index()
     prediction_counts.columns = ['Predicted Stroke', 'Count']
