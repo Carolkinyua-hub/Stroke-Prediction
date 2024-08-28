@@ -177,8 +177,8 @@ if uploaded_file is not None:
     for feature, (low, high) in normal_ranges.items():
         if feature in or_df['Feature'].values:
             feature_row = or_df[or_df['Feature'] == feature]
-            ax_or.axvline(x=low, color='red', linestyle='--', linewidth=1, label=f'{feature} Normal Range Low')
-            ax_or.axvline(x=high, color='blue', linestyle='--', linewidth=1, label=f'{feature} Normal Range High')
+            ax_or.axvline(x=low, color='red', linestyle='--', linewidth=1)
+            ax_or.axvline(x=high, color='blue', linestyle='--', linewidth=1)
 
     ax_or.set_title('Odds Ratios for Features with Normal Range')
     ax_or.set_xlabel('Odds Ratio')
@@ -187,10 +187,6 @@ if uploaded_file is not None:
     # Add annotations for odds ratios
     for index, row in or_df.iterrows():
         ax_or.text(row['Odds Ratio'] + 0.1, index, f'{row["Odds Ratio"]:.2f}', va='center', fontsize=10)
-
-    # Handle legend overlap
-    handles, labels = ax_or.get_legend_handles_labels()
-    ax_or.legend(handles, labels, loc='lower right', bbox_to_anchor=(1.15, 0.5))
 
     st.pyplot(fig_or)
 
