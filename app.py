@@ -121,7 +121,7 @@ if uploaded_file is not None:
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
     fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
-    sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma')
+    sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma', ax=ax_importance)
     for index, value in enumerate(importance_df['Importance']):
         ax_importance.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
     ax_importance.set_title('Permutation Feature Importance in Percentages')
@@ -179,11 +179,19 @@ if uploaded_file is not None:
             feature_row = or_df[or_df['Feature'] == feature]
             ax_or.axvline(x=low, color='red', linestyle='--', linewidth=1, label=f'{feature} Normal Range Low')
             ax_or.axvline(x=high, color='blue', linestyle='--', linewidth=1, label=f'{feature} Normal Range High')
-    
+
     ax_or.set_title('Odds Ratios for Features with Normal Range')
     ax_or.set_xlabel('Odds Ratio')
     ax_or.set_ylabel('Feature')
-    ax_or.legend()
+
+    # Add annotations for odds ratios
+    for index, row in or_df.iterrows():
+        ax_or.text(row['Odds Ratio'] + 0.1, index, f'{row["Odds Ratio"]:.2f}', va='center', fontsize=10)
+
+    # Handle legend overlap
+    handles, labels = ax_or.get_legend_handles_labels()
+    ax_or.legend(handles, labels, loc='lower right', bbox_to_anchor=(1.15, 0.5))
+
     st.pyplot(fig_or)
 
     # Conclusions and Recommendations
