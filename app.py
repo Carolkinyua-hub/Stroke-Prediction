@@ -93,7 +93,7 @@ if uploaded_file is not None:
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
     # Plot metrics and feature importance
-    fig, axes = plt.subplots(4, 1, figsize=(12, 20))
+    fig, axes = plt.subplots(2, 1, figsize=(12, 12))
 
     # Plot metrics
     sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
@@ -113,25 +113,27 @@ if uploaded_file is not None:
     axes[1].set_ylabel('Feature')
     axes[1].set_xlim(0, 100)
 
-    # Plot distribution of top features
-    top_features = importance_df.head(5)
-    for i, feature in enumerate(top_features['Feature']):
-        sns.histplot(balanced_df[feature], kde=True, ax=axes[i + 2])
-        axes[i + 2].set_title(f'Distribution of {feature}')
-        axes[i + 2].set_xlabel(feature)
-        axes[i + 2].set_ylabel('Frequency')
+    plt.tight_layout()
+    st.pyplot(fig)
 
-    # Plot impact of top features on stroke prevalence
-    for i, feature in enumerate(top_features['Feature']):
+    # Plot distribution of top features separately
+    top_features = importance_df.head(5)
+    for feature in top_features['Feature']:
         plt.figure(figsize=(10, 4))
-        sns.lineplot(x=balanced_df[feature], y=balanced_df['Stroke'], ci=None)
+        sns.histplot(balanced_df[feature], kde=True, color='skyblue')
+        plt.title(f'Distribution of {feature}')
+        plt.xlabel(feature)
+        plt.ylabel('Frequency')
+        st.pyplot(plt.gcf())
+
+    # Plot impact of top features on stroke prevalence separately
+    for feature in top_features['Feature']:
+        plt.figure(figsize=(10, 4))
+        sns.lineplot(x=balanced_df[feature], y=balanced_df['Stroke'], ci=None, marker='o')
         plt.title(f'Impact of {feature} on Stroke Prevalence')
         plt.xlabel(feature)
         plt.ylabel('Stroke Prevalence')
         st.pyplot(plt.gcf())
-
-    plt.tight_layout()
-    st.pyplot(fig)
 
 else:
     st.write("Please upload a CSV file.")
