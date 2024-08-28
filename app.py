@@ -21,7 +21,7 @@ if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
     
     # Create a column with descriptive stroke labels
-    data['Stroke_Label'] = data['Stroke'].map({0: 'No Stroke', 1: 'Stroke'})
+    data['Stroke_Label'] = data['Stroke'].map({0.0: 'No Stroke', 1.0: 'Stroke'})
     
     st.sidebar.header('Data Overview')
     st.sidebar.write("### Dataset Sample")
@@ -29,8 +29,8 @@ if uploaded_file is not None:
     st.sidebar.write(f"### Data Shape: {data.shape}")
 
     # Separate classes
-    majority_class = data[data['Stroke'] == 0]
-    minority_class = data[data['Stroke'] == 1]
+    majority_class = data[data['Stroke'] == 0.0]
+    minority_class = data[data['Stroke'] == 1.0]
 
     # Downsample the majority class
     majority_downsampled = majority_class.sample(n=len(minority_class), random_state=42)
@@ -64,12 +64,12 @@ if uploaded_file is not None:
     accuracy = accuracy_score(y, y_pred) * 100
     metrics = {
         'accuracy': accuracy,
-        'precision_stroke': report.get('1', {}).get('precision', 0) * 100,
-        'recall_stroke': report.get('1', {}).get('recall', 0) * 100,
-        'f1_score_stroke': report.get('1', {}).get('f1-score', 0) * 100,
-        'precision_no_stroke': report.get('0', {}).get('precision', 0) * 100,
-        'recall_no_stroke': report.get('0', {}).get('recall', 0) * 100,
-        'f1_score_no_stroke': report.get('0', {}).get('f1-score', 0) * 100
+        'precision_stroke': report.get('1.0', {}).get('precision', 0) * 100,
+        'recall_stroke': report.get('1.0', {}).get('recall', 0) * 100,
+        'f1_score_stroke': report.get('1.0', {}).get('f1-score', 0) * 100,
+        'precision_no_stroke': report.get('0.0', {}).get('precision', 0) * 100,
+        'recall_no_stroke': report.get('0.0', {}).get('recall', 0) * 100,
+        'f1_score_no_stroke': report.get('0.0', {}).get('f1-score', 0) * 100
     }
 
     # Create DataFrame for metrics
@@ -123,8 +123,10 @@ if uploaded_file is not None:
         st.pyplot(fig_feature)
 
     st.subheader('Distribution of Predicted Stroke Cases')
-    prediction_df = pd.DataFrame({'True Stroke': y.map({0: 'No Stroke', 1: 'Stroke'}), 
-                                   'Predicted Stroke': y_pred.map({0: 'No Stroke', 1: 'Stroke'})})
+    prediction_df = pd.DataFrame({
+        'True Stroke': y.map({0.0: 'No Stroke', 1.0: 'Stroke'}), 
+        'Predicted Stroke': y_pred.map({0.0: 'No Stroke', 1.0: 'Stroke'})
+    })
     prediction_counts = prediction_df['Predicted Stroke'].value_counts().reset_index()
     prediction_counts.columns = ['Predicted Stroke', 'Count']
 
