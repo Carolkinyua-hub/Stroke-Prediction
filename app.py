@@ -110,6 +110,19 @@ if uploaded_file is not None:
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
+    # Compute Odds Ratios (OR) for each feature
+    def calculate_odds_ratio(feature_name):
+        odds_ratio = np.exp(np.log1p(X_balanced[feature_name]).mean())  # Simplified OR calculation
+        return odds_ratio
+
+    odds_ratios = {feature: calculate_odds_ratio(feature) for feature in features}
+
+    # Display Odds Ratios
+    st.subheader('Odds Ratios for Features')
+    or_df = pd.DataFrame(list(odds_ratios.items()), columns=['Feature', 'Odds Ratio'])
+    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
+    st.write(or_df)
+
     # Create dashboard layout for metrics
     st.sidebar.header('Model Metrics')
     st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
