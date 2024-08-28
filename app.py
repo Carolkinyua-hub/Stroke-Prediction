@@ -41,7 +41,7 @@ if uploaded_file is not None:
     X_scaled = scaler.fit_transform(X_balanced)
 
     # Load the pre-trained Neural Network model
-    model = joblib.load('neural_network_model_selected_features.joblib')
+    model = joblib.load('neural_network_model_selected_features(1).joblib')
 
     # Make predictions on the data
     y_pred_prob = model.predict_proba(X_scaled)[:, 1]
