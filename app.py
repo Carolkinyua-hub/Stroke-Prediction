@@ -92,9 +92,11 @@ if uploaded_file is not None:
         'f1_score_no_stroke': report.get('0.0', {}).get('f1-score', 0) * 100
     }
 
-    # Create DataFrame for metrics
+    # Display metrics
+    st.subheader('Model Metrics')
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
     metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
+    st.write(metrics_df)
 
     # Compute permutation importance
     st.subheader('Feature Importance')
@@ -155,19 +157,6 @@ if uploaded_file is not None:
     ax_or.set_xlabel('Odds Ratio')
     ax_or.set_ylabel('Feature')
     st.pyplot(fig_or)
-
-    # Add interpretation and recommendations
-    st.subheader('Interpretation and Recommendations')
-    
-    st.write("""
-    **Interpretation:**
-    - **High Odds Ratios:** Features like HeartDiseaseorAttack and Age have high odds ratios, indicating strong associations with stroke.
-    - **Moderate to Low Odds Ratios:** The lower odds ratios for HighBP and BMI are surprising and suggest further model refinement might be needed.
-
-    **Recommendations:**
-    - **Feature Engineering:** Further refine the model by exploring additional features or interactions.
-    - **Model Evaluation:** Validate the model with external datasets to ensure it generalizes well and reflects the importance of these predictors.
-    """)
 
 else:
     st.write("Upload a CSV file to get started.")
