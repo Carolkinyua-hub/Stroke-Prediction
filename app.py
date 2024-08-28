@@ -3,13 +3,14 @@ import pandas as pd
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 from sklearn.inspection import permutation_importance
 
 # Streamlit app configuration
-st.title('Stroke Prediction Model Interpretability')
+st.title('Stroke Prediction App')
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
@@ -18,16 +19,22 @@ if uploaded_file is not None:
     # Load the data
     data = pd.read_csv(uploaded_file)
 
-    # Separate classes and downsample
+    # Separate classes
     majority_class = data[data['Stroke'] == 0]
     minority_class = data[data['Stroke'] == 1]
+
+    # Downsample the majority class
     majority_downsampled = majority_class.sample(n=len(minority_class), random_state=42)
+
+    # Combine the minority class with the downsampled majority class
     balanced_df = pd.concat([minority_class, majority_downsampled])
+
+    # Shuffle the dataset to ensure the classes are mixed
     balanced_df = shuffle(balanced_df, random_state=42).reset_index(drop=True)
 
-    # Separate features and target
-    X_balanced = balanced_df.drop('Stroke', axis=1)
-    y = balanced_df['Stroke']
+    # Separate features and target in the balanced dataset
+    X_balanced = balanced_df.drop('Stroke', axis=1)  # Features
+    y = balanced_df['Stroke']  # Target variable
 
     # Scale the data
     scaler = MinMaxScaler()
@@ -36,92 +43,95 @@ if uploaded_file is not None:
     # Load the pre-trained Neural Network model
     model = joblib.load('neural_network_model_selected_features.joblib')
 
-    # Make predictions
+    # Make predictions on the data
+    y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
-    # Classification report
+    # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
-    st.write("### Classification Report:")
 
-    # Create a DataFrame for the classification report
-    report_df = pd.DataFrame(report).transpose().reset_index()
-    report_df = report_df.rename(columns={'index': 'Metric'})
+    # Determine positive label (assuming binary classification)
+    positive_labels = [label for label in report if label not in ['accuracy', 'macro avg', 'weighted avg']]
+    
+    if positive_labels:
+        positive_label = positive_labels[0]
+        metrics = {
+            'accuracy': accuracy_score(y, y_pred) * 100,
+            'precision': report[positive_label]['precision'] * 100,
+            'recall': report[positive_label]['recall'] * 100,
+            'f1-score': report[positive_label]['f1-score'] * 100
+        }
+    else:
+        st.write("Positive label not found in the report.")
+        metrics = {
+            'accuracy': accuracy_score(y, y_pred) * 100,
+            'precision': 0,
+            'recall': 0,
+            'f1-score': 0
+        }
 
-    # Filter relevant metrics
-    metrics = ['precision', 'recall', 'f1-score']
-    filtered_df = report_df[report_df['Metric'].isin(metrics)]
+    # Create DataFrame for metrics
+    metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
+    metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
 
-    # Ensure 'support' column is not dropped if it exists
-    if 'support' in filtered_df.columns:
-        filtered_df = filtered_df.drop('support', axis=1)
+    # Ensure no empty or zero values cause an empty bar
+    metrics_df = metrics_df[metrics_df['Percentage'] > 0]
 
-    # Bar plot for classification report
-    fig, ax = plt.subplots(figsize=(10, 6))
-    filtered_df.set_index('Metric').plot(kind='bar', ax=ax, color=['#1f77b4', '#ff7f0e'])
-    ax.set_title('Classification Report Metrics')
-    ax.set_ylabel('Score')
-    ax.set_xlabel('Metric')
-    ax.set_xticklabels(['No Stroke (0.0)', 'Stroke (1.0)'], rotation=0)
-    plt.legend(title='Metric')
-    st.pyplot(fig)
-
-    # Permutation importance
+    # Compute permutation importance
     results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
-    importances = results.importances_mean * 100
-    features = X_balanced.columns
+    importances = results.importances_mean
 
+    # Convert permutation importances to percentages
+    importances_percentage = importances * 100
+    features = X_balanced.columns  # Feature names
+
+    # Create DataFrame for permutation importance
     importance_df = pd.DataFrame({
         'Feature': features,
-        'Importance': importances
-    }).sort_values(by='Importance', ascending=False)
+        'Importance': importances_percentage
+    })
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-    # Filter top 5 important features
-    top_features = importance_df.head(5)
+    # Plot metrics and feature importance
+    fig, axes = plt.subplots(4, 1, figsize=(12, 20))
 
-    # Compute correlation matrix for features with stroke prevalence
-    correlation_matrix = balanced_df[top_features['Feature'].tolist() + ['Stroke']].corr()
-
-    # Create plots
-    fig, axes = plt.subplots(len(top_features) + 2, 1, figsize=(12, 4 * (len(top_features) + 2)))
-
-    # Plot top 5 feature importances
-    sns.barplot(x='Importance', y='Feature', data=top_features, ax=axes[0], palette='plasma')
-    for index, value in enumerate(top_features['Importance']):
+    # Plot metrics
+    sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
+    for index, value in enumerate(metrics_df['Percentage']):
         axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[0].set_title('Top 5 Feature Importances')
-    axes[0].set_xlabel('Importance (%)')
+    axes[0].set_title('Model Evaluation Metrics in Percentages')
+    axes[0].set_xlabel('Percentage (%)')
+    axes[0].set_ylabel('Metric')
     axes[0].set_xlim(0, 100)
 
-    # Plot correlation heatmap
-    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, ax=axes[-1], fmt=".2f")
-    axes[-1].set_title('Correlation Heatmap of Top Features and Stroke')
+    # Plot feature importance
+    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
+    for index, value in enumerate(importance_df['Importance']):
+        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[1].set_title('Permutation Feature Importance in Percentages')
+    axes[1].set_xlabel('Importance (%)')
+    axes[1].set_ylabel('Feature')
+    axes[1].set_xlim(0, 100)
+
+    # Plot distribution of top features
+    top_features = importance_df.head(5)
+    for i, feature in enumerate(top_features['Feature']):
+        sns.histplot(balanced_df[feature], kde=True, ax=axes[i + 2])
+        axes[i + 2].set_title(f'Distribution of {feature}')
+        axes[i + 2].set_xlabel(feature)
+        axes[i + 2].set_ylabel('Frequency')
+
+    # Plot impact of top features on stroke prevalence
+    for i, feature in enumerate(top_features['Feature']):
+        plt.figure(figsize=(10, 4))
+        sns.lineplot(x=balanced_df[feature], y=balanced_df['Stroke'], ci=None)
+        plt.title(f'Impact of {feature} on Stroke Prevalence')
+        plt.xlabel(feature)
+        plt.ylabel('Stroke Prevalence')
+        st.pyplot(plt.gcf())
 
     plt.tight_layout()
     st.pyplot(fig)
-
-    # Additional insights
-    st.write("### Additional Insights:")
-
-    # Distribution of top features
-    st.write("#### Distribution of Top Features")
-    for feature in top_features['Feature']:
-        fig, ax = plt.subplots()
-        sns.histplot(balanced_df[feature], kde=True, ax=ax)
-        ax.set_title(f'Distribution of {feature}')
-        ax.set_xlabel(feature)
-        ax.set_ylabel('Frequency')
-        st.pyplot(fig)
-
-    # Health impact of top features (if relevant data available)
-    if 'HealthMetric' in balanced_df.columns:
-        st.write("#### Health Impact of Top Features")
-        for feature in top_features['Feature']:
-            fig, ax = plt.subplots()
-            sns.boxplot(x='Stroke', y=feature, data=balanced_df, ax=ax)
-            ax.set_title(f'{feature} by Stroke Status')
-            ax.set_xlabel('Stroke')
-            ax.set_ylabel(feature)
-            st.pyplot(fig)
 
 else:
     st.write("Please upload a CSV file.")
