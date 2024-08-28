@@ -42,18 +42,22 @@ if uploaded_file is not None:
     # Classification report
     report = classification_report(y, y_pred, output_dict=True)
     st.write("### Classification Report:")
-    
+
     # Create a DataFrame for the classification report
     report_df = pd.DataFrame(report).transpose().reset_index()
     report_df = report_df.rename(columns={'index': 'Metric'})
-    
+
     # Filter relevant metrics
     metrics = ['precision', 'recall', 'f1-score']
     filtered_df = report_df[report_df['Metric'].isin(metrics)]
-    
+
+    # Ensure 'support' column is not dropped if it exists
+    if 'support' in filtered_df.columns:
+        filtered_df = filtered_df.drop('support', axis=1)
+
     # Bar plot for classification report
     fig, ax = plt.subplots(figsize=(10, 6))
-    filtered_df.set_index('Metric').drop('support', axis=1).plot(kind='bar', ax=ax, color=['#1f77b4', '#ff7f0e'])
+    filtered_df.set_index('Metric').plot(kind='bar', ax=ax, color=['#1f77b4', '#ff7f0e'])
     ax.set_title('Classification Report Metrics')
     ax.set_ylabel('Score')
     ax.set_xlabel('Metric')
