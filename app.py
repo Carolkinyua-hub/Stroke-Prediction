@@ -158,10 +158,6 @@ if uploaded_file is not None:
     ax_or.set_ylabel('Feature')
     st.pyplot(fig_or)
 
-else:
-    st.write("Upload a CSV file to get started.")
-
-
     # Conclusions and Recommendations
     st.subheader('Conclusions and Recommendations')
     st.write(
@@ -172,9 +168,7 @@ else:
 
         ### Recommendations:
         - **Monitoring and Interventions**: Regular monitoring of individuals with high values in significant features (such as Age and Heart Disease or Attack) could help in early detection and intervention. Implementing lifestyle changes and medical check-ups focusing on these high-risk features can potentially reduce stroke incidence.
-        - **Model Improvements**: Consider incorporating additional
-
- features or data sources to enhance model performance. Regularly update the model with new data to adapt to changing patterns and improve predictive accuracy.
+        - **Model Improvements**: Consider incorporating additional features or data sources to enhance model performance. Regularly update the model with new data to adapt to changing patterns and improve predictive accuracy.
         - **Public Health Campaigns**: Use insights from feature importances to tailor public health campaigns. For instance, focus on education around managing blood pressure and general health, given their significant impact on stroke risk.
         - **Further Research**: Investigate the causal relationships between the identified features and stroke risk. Collaborate with healthcare professionals to validate the findings and explore new research avenues.
         - **Stakeholder Engagement**: Share insights with healthcare providers and policymakers to inform strategies and guidelines. Providing actionable recommendations based on data can help in formulating effective health policies.
@@ -182,7 +176,4 @@ else:
     )
 
 else:
-    st.write("Please upload a CSV file.")
-
-
-
+    st.write("Upload a CSV file to get started.")
