@@ -1,8 +1,3 @@
-If the odds ratio annotations are misaligned, it could be due to the positioning or alignment of the text relative to the bars. Let’s ensure that the annotations are accurately placed at the end of the bars and adjust the alignment as needed.
-
-Here’s the updated code to correct the annotation alignment:
-
-```python
 import streamlit as st
 import pandas as pd
 import joblib
@@ -195,10 +190,6 @@ if uploaded_file is not None:
 
 else:
     st.write("Please upload a CSV file.")
-```
 
-### Key Updates:
-1. **Corrected Odds Ratio Annotations**: The annotations for the odds ratios have been aligned properly at the end of the bars.
-2. **Removed Normal Range Lines**: The lines and text for normal ranges have been removed to reduce clutter in the visualization.
 
-This code should now accurately reflect the odds ratios with clear annotations and without overlapping elements.
+
