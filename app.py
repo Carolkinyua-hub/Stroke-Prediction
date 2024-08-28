@@ -63,10 +63,8 @@ if uploaded_file is not None:
     report = classification_report(y, y_pred, output_dict=True)
 
     # Extract metrics dynamically
-    labels = list(report.keys())
-    accuracy = accuracy_score(y, y_pred) * 100
     metrics = {
-        'accuracy': accuracy,
+        'accuracy': accuracy_score(y, y_pred) * 100,
         'precision_stroke': report.get('1.0', {}).get('precision', 0) * 100,
         'recall_stroke': report.get('1.0', {}).get('recall', 0) * 100,
         'f1_score_stroke': report.get('1.0', {}).get('f1-score', 0) * 100,
