@@ -7,6 +7,7 @@ from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from sklearn.linear_model import LogisticRegression
 from sklearn.inspection import permutation_importance
 
 # Streamlit app configuration
@@ -110,17 +111,23 @@ if uploaded_file is not None:
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-    # Compute Odds Ratios (OR) for each feature
-    def calculate_odds_ratio(feature_name):
-        odds_ratio = np.exp(np.log1p(X_balanced[feature_name]).mean())  # Simplified OR calculation
-        return odds_ratio
+    # Compute Odds Ratios (OR) for each feature using Logistic Regression
+    logistic_model = LogisticRegression()
+    logistic_model.fit(X_scaled, y)
 
-    odds_ratios = {feature: calculate_odds_ratio(feature) for feature in features}
+    # Get coefficients and calculate odds ratios
+    coefficients = logistic_model.coef_[0]
+    odds_ratios = np.exp(coefficients)
+
+    # Create DataFrame for odds ratios
+    or_df = pd.DataFrame({
+        'Feature': features,
+        'Odds Ratio': odds_ratios
+    })
+    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
 
     # Display Odds Ratios
     st.subheader('Odds Ratios for Features')
-    or_df = pd.DataFrame(list(odds_ratios.items()), columns=['Feature', 'Odds Ratio'])
-    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
     st.write(or_df)
 
     # Create dashboard layout for metrics
