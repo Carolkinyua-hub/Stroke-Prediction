@@ -6,7 +6,7 @@ from sklearn.utils import shuffle
 from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
-import shap
+from sklearn.inspection import permutation_importance
 
 # Streamlit app configuration
 st.title('Stroke Prediction App')
@@ -76,11 +76,22 @@ if uploaded_file is not None:
     # Ensure no empty or zero values cause an empty bar
     metrics_df = metrics_df[metrics_df['Percentage'] > 0]
 
-    # Initialize SHAP KernelExplainer
-    explainer = shap.KernelExplainer(model.predict, X_scaled)
-    shap_values = explainer.shap_values(X_scaled)
+    # Compute permutation importance
+    results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
+    importances = results.importances_mean
 
-    # Plot metrics and SHAP feature importance
+    # Convert permutation importances to percentages
+    importances_percentage = importances * 100
+    features = X_balanced.columns  # Feature names
+
+    # Create DataFrame for permutation importance
+    importance_df = pd.DataFrame({
+        'Feature': features,
+        'Importance': importances_percentage
+    })
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
+
+    # Plot metrics and feature importance
     fig, axes = plt.subplots(2, 1, figsize=(12, 14))
     
     # Plot metrics
@@ -92,13 +103,17 @@ if uploaded_file is not None:
     axes[0].set_ylabel('Metric')
     axes[0].set_xlim(0, 100)
 
-    # Plot SHAP summary plot (bar)
-    shap.summary_plot(shap_values, X_balanced, plot_type="bar", feature_names=X_balanced.columns, show=False)
-    axes[1].set_title('SHAP Feature Importance')
-    st.pyplot(fig)
+    # Plot feature importance
+    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
+    for index, value in enumerate(importance_df['Importance']):
+        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[1].set_title('Permutation Feature Importance in Percentages')
+    axes[1].set_xlabel('Importance (%)')
+    axes[1].set_ylabel('Feature')
+    axes[1].set_xlim(0, 100)
 
-    st.write("SHAP Summary Plot")
-    shap.summary_plot(shap_values, X_balanced, feature_names=X_balanced.columns)
+    plt.tight_layout()
+    st.pyplot(fig)
 
 else:
     st.write("Please upload a CSV file.")
