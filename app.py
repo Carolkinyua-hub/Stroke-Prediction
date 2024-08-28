@@ -59,31 +59,18 @@ if uploaded_file is not None:
     # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
 
-    # Determine positive label (assuming binary classification)
-    positive_labels = [label for label in report if label not in ['accuracy', 'macro avg', 'weighted avg']]
-    
-    if positive_labels:
-        positive_label = positive_labels[0]
-        metrics = {
-            'accuracy': accuracy_score(y, y_pred) * 100,
-            'precision_stroke': report[positive_label]['precision'] * 100,
-            'recall_stroke': report[positive_label]['recall'] * 100,
-            'f1_score_stroke': report[positive_label]['f1-score'] * 100,
-            'precision_no_stroke': report['0']['precision'] * 100,
-            'recall_no_stroke': report['0']['recall'] * 100,
-            'f1_score_no_stroke': report['0']['f1-score'] * 100
-        }
-    else:
-        st.write("Positive label not found in the report.")
-        metrics = {
-            'accuracy': accuracy_score(y, y_pred) * 100,
-            'precision_stroke': 0,
-            'recall_stroke': 0,
-            'f1_score_stroke': 0,
-            'precision_no_stroke': 0,
-            'recall_no_stroke': 0,
-            'f1_score_no_stroke': 0
-        }
+    # Extract metrics dynamically
+    labels = list(report.keys())
+    accuracy = accuracy_score(y, y_pred) * 100
+    metrics = {
+        'accuracy': accuracy,
+        'precision_stroke': report.get('1', {}).get('precision', 0) * 100,
+        'recall_stroke': report.get('1', {}).get('recall', 0) * 100,
+        'f1_score_stroke': report.get('1', {}).get('f1-score', 0) * 100,
+        'precision_no_stroke': report.get('0', {}).get('precision', 0) * 100,
+        'recall_no_stroke': report.get('0', {}).get('recall', 0) * 100,
+        'f1_score_no_stroke': report.get('0', {}).get('f1-score', 0) * 100
+    }
 
     # Create DataFrame for metrics
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
