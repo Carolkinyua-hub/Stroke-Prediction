@@ -7,11 +7,11 @@ from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 
 # Streamlit app configuration
-st.title('Stroke Prediction App')
+st.set_page_config(page_title="Stroke Prediction Dashboard", layout="wide")
+st.title('Stroke Prediction Dashboard')
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
@@ -20,9 +20,17 @@ if uploaded_file is not None:
     # Load the data
     data = pd.read_csv(uploaded_file)
 
+    # Create a column with descriptive stroke labels
+    data['Stroke_Label'] = data['Stroke'].map({0.0: 'No Stroke', 1.0: 'Stroke'})
+    
+    st.sidebar.header('Data Overview')
+    st.sidebar.write("### Dataset Sample")
+    st.sidebar.write(data.head())
+    st.sidebar.write(f"### Data Shape: {data.shape}")
+
     # Separate classes
-    majority_class = data[data['Stroke'] == 0]
-    minority_class = data[data['Stroke'] == 1]
+    majority_class = data[data['Stroke'] == 0.0]
+    minority_class = data[data['Stroke'] == 1.0]
 
     # Downsample the majority class
     majority_downsampled = majority_class.sample(n=len(minority_class), random_state=42)
@@ -34,7 +42,7 @@ if uploaded_file is not None:
     balanced_df = shuffle(balanced_df, random_state=42).reset_index(drop=True)
 
     # Separate features and target in the balanced dataset
-    X_balanced = balanced_df.drop('Stroke', axis=1)  # Features
+    X_balanced = balanced_df.drop(['Stroke', 'Stroke_Label'], axis=1)  # Features
     y = balanced_df['Stroke']  # Target variable
 
     # Scale the data
@@ -42,41 +50,50 @@ if uploaded_file is not None:
     X_scaled = scaler.fit_transform(X_balanced)
 
     # Load the pre-trained Neural Network model
-    model = joblib.load('neural_network_model_selected_features.joblib')
+    model = joblib.load('neural_network_model_selected_features_.joblib')
 
     # Make predictions on the data
     y_pred_prob = model.predict_proba(X_scaled)[:, 1]
     y_pred = model.predict(X_scaled)
 
+    # Convert y_pred to a Pandas Series for mapping
+    y_pred_series = pd.Series(y_pred)
+
+    # Distribution of Predicted Stroke Cases
+    st.subheader('Distribution of Predicted Stroke Cases')
+    prediction_df = pd.DataFrame({
+        'True Stroke': data['Stroke_Label'], 
+        'Predicted Stroke': y_pred_series.map({0.0: 'No Stroke', 1.0: 'Stroke'})
+    })
+    prediction_counts = prediction_df['Predicted Stroke'].value_counts().reset_index()
+    prediction_counts.columns = ['Predicted Stroke', 'Count']
+
+    fig_pred, ax_pred = plt.subplots(figsize=(8, 6))
+    sns.barplot(x='Predicted Stroke', y='Count', data=prediction_counts, palette='coolwarm', ax=ax_pred)
+    for index, value in enumerate(prediction_counts['Count']):
+        ax_pred.text(index, value + 1, f'{value}', ha='center', fontsize=10)
+    ax_pred.set_title('Predicted Stroke vs Non-Stroke Cases')
+    ax_pred.set_xlabel('Predicted Stroke')
+    ax_pred.set_ylabel('Count')
+    st.pyplot(fig_pred)
+
     # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
 
-    # Determine positive label (assuming binary classification)
-    positive_labels = [label for label in report if label not in ['accuracy', 'macro avg', 'weighted avg']]
-    
-    if positive_labels:
-        positive_label = positive_labels[0]
-        metrics = {
-            'accuracy': accuracy_score(y, y_pred) * 100,
-            'precision': report[positive_label]['precision'] * 100,
-            'recall': report[positive_label]['recall'] * 100,
-            'f1-score': report[positive_label]['f1-score'] * 100
-        }
-    else:
-        st.write("Positive label not found in the report.")
-        metrics = {
-            'accuracy': accuracy_score(y, y_pred) * 100,
-            'precision': 0,
-            'recall': 0,
-            'f1-score': 0
-        }
+    # Extract metrics dynamically
+    metrics = {
+        'accuracy': accuracy_score(y, y_pred) * 100,
+        'precision_stroke': report.get('1.0', {}).get('precision', 0) * 100,
+        'recall_stroke': report.get('1.0', {}).get('recall', 0) * 100,
+        'f1_score_stroke': report.get('1.0', {}).get('f1-score', 0) * 100,
+        'precision_no_stroke': report.get('0.0', {}).get('precision', 0) * 100,
+        'recall_no_stroke': report.get('0.0', {}).get('recall', 0) * 100,
+        'f1_score_no_stroke': report.get('0.0', {}).get('f1-score', 0) * 100
+    }
 
     # Create DataFrame for metrics
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
     metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
-
-    # Ensure no empty or zero values cause an empty bar
-    metrics_df = metrics_df[metrics_df['Percentage'] > 0]
 
     # Compute permutation importance
     results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
@@ -93,97 +110,70 @@ if uploaded_file is not None:
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-    # Plot metrics and feature importance
-    fig, axes = plt.subplots(2, 1, figsize=(12, 14))
-    
-    # Plot metrics
-    sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
-    for index, value in enumerate(metrics_df['Percentage']):
-        axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[0].set_title('Model Evaluation Metrics in Percentages')
-    axes[0].set_xlabel('Percentage (%)')
-    axes[0].set_ylabel('Metric')
-    axes[0].set_xlim(0, 100)
+    # Create dashboard layout for metrics
+    st.sidebar.header('Model Metrics')
+    st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
+    st.sidebar.write(f"### Precision (Stroke): {metrics['precision_stroke']:.2f}%")
+    st.sidebar.write(f"### Recall (Stroke): {metrics['recall_stroke']:.2f}%")
+    st.sidebar.write(f"### F1 Score (Stroke): {metrics['f1_score_stroke']:.2f}%")
+    st.sidebar.write(f"### Precision (No Stroke): {metrics['precision_no_stroke']:.2f}%")
+    st.sidebar.write(f"### Recall (No Stroke): {metrics['recall_no_stroke']:.2f}%")
+    st.sidebar.write(f"### F1 Score (No Stroke): {metrics['f1_score_no_stroke']:.2f}%")
 
-    # Plot feature importance
-    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
+    # Feature Importance
+    st.subheader('Feature Importance')
+    fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
+    sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma')
     for index, value in enumerate(importance_df['Importance']):
-        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[1].set_title('Permutation Feature Importance in Percentages')
-    axes[1].set_xlabel('Importance (%)')
-    axes[1].set_ylabel('Feature')
-    axes[1].set_xlim(0, 100)
+        ax_importance.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    ax_importance.set_title('Permutation Feature Importance in Percentages')
+    ax_importance.set_xlabel('Importance (%)')
+    ax_importance.set_ylabel('Feature')
+    ax_importance.set_xlim(0, 100)
+    st.pyplot(fig_importance)
 
-    plt.tight_layout()
-    st.pyplot(fig)
+    # Compute and visualize Odds Ratios
+    st.subheader('Odds Ratio Visualization')
 
-    # Pie charts for factors
-    def plot_pie_chart(ax, labels, sizes, title):
-        sizes = np.clip(sizes, 0, None)  # Ensure sizes are non-negative
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=sns.color_palette('pastel'))
-        ax.axis('equal')
-        ax.set_title(title)
+    # Fit a logistic regression model for odds ratios
+    logistic_model = LogisticRegression()
+    logistic_model.fit(X_scaled, y)
 
-    # Data for pie charts
-    factor_1 = {
-        'labels': ['HeartDiseaseorAttack', 'BMI', 'GenHlth', 'PhysHlth', 'MentHlth', 'Diabetes', 'NoDocbcCost', 'DiffWalk'],
-        'sizes': [0.262, 0.243, 0.756, 0.733, 0.493, 0.277, 0.294, 0.587],
-        'title': 'Factor 1: General Health Status and Healthcare Access'
-    }
+    # Compute odds ratios
+    odds_ratios = np.exp(logistic_model.coef_[0])
+    features = X_balanced.columns
+
+    # Create DataFrame for odds ratios
+    or_df = pd.DataFrame({
+        'Feature': features,
+        'Odds Ratio': odds_ratios
+    })
+
+    # Sort odds ratios in descending order
+    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
+
+    # Create Bar Plot for Odds Ratios
+    fig_or, ax_or = plt.subplots(figsize=(10, 6))
+    sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
+    for index, value in enumerate(or_df['Odds Ratio']):
+        ax_or.text(value + 0.1, index, f'{value:.2f}', va='center', fontsize=10)
+    ax_or.set_title('Odds Ratios for Stroke Prediction Features')
+    ax_or.set_xlabel('Odds Ratio')
+    ax_or.set_ylabel('Feature')
+    st.pyplot(fig_or)
+
+    # Add interpretation and recommendations
+    st.subheader('Interpretation and Recommendations')
     
-    factor_2 = {
-        'labels': ['HighBP', 'HighChol', 'AnyHealthcare', 'Age', 'Education', 'Income'],
-        'sizes': [0, 0, 0, 0, 0.118, 0.037],  # Adjusted sizes for non-empty pie chart
-        'title': 'Factor 2: Hypertension, Cholesterol, and Healthcare Access'
-    }
-    
-    factor_3 = {
-        'labels': ['Education', 'Income', 'Veggies', 'Smoker'],
-        'sizes': [0, 0, 0, 0.070],  # Adjusted sizes for non-empty pie chart
-        'title': 'Factor 3: Socioeconomic Status and Lifestyle Factors'
-    }
-    
-    factor_4 = {
-        'labels': ['BMI', 'Diabetes', 'HighChol'],
-        'sizes': [0.497, 0.370, 0.200],
-        'title': 'Factor 4: Metabolic and Obesity-Related Health Issues'
-    }
-    
-    factor_5 = {
-        'labels': ['Fruits', 'Sex', 'Smoker', 'DiffWalk'],
-        'sizes': [0.216, 0.468, 0, 0.123],  # Adjusted sizes for non-empty pie chart
-        'title': 'Factor 5: Lifestyle and Demographic Characteristics'
-    }
+    st.write("""
+    **Interpretation:**
+    - **High Odds Ratios:** Features like HeartDiseaseorAttack and Age have high odds ratios, indicating strong associations with stroke.
+    - **Moderate to Low Odds Ratios:** The lower odds ratios for HighBP and BMI are surprising and suggest further model refinement might be needed.
 
-    # Increase the size of pie charts
-    fig, axes = plt.subplots(3, 2, figsize=(18, 16))  # Adjust the figsize for larger charts
-    plot_pie_chart(axes[0, 0], factor_1['labels'], factor_1['sizes'], factor_1['title'])
-    plot_pie_chart(axes[0, 1], factor_2['labels'], factor_2['sizes'], factor_2['title'])
-    plot_pie_chart(axes[1, 0], factor_3['labels'], factor_3['sizes'], factor_3['title'])
-    plot_pie_chart(axes[1, 1], factor_4['labels'], factor_4['sizes'], factor_4['title'])
-    plot_pie_chart(axes[2, 0], factor_5['labels'], factor_5['sizes'], factor_5['title'])
-
-    plt.tight_layout()
-    st.pyplot(fig)
-
-    # Display odds ratios in the sidebar
-    def calculate_odds_ratios(model, X):
-        if hasattr(model, 'coef_'):
-            coefficients = model.coef_[0]  # Coefficients from the logistic regression model
-            odds_ratios = np.exp(coefficients)  # Convert coefficients to odds ratios
-            return odds_ratios
-        return None
-
-    # Calculate odds ratios (if using logistic regression model)
-    if isinstance(model, LogisticRegression):
-        odds_ratios = calculate_odds_ratios(model, X_balanced)
-        odds_ratios_df = pd.DataFrame({
-            'Feature': X_balanced.columns,
-            'Odds Ratio': odds_ratios
-        }).sort_values(by='Odds Ratio', ascending=False)
-
-        st.sidebar.header('Odds Ratios')
-        st.sidebar.dataframe(odds_ratios_df)
+    **Recommendations:**
+    - **Feature Engineering:** Further refine the model by exploring additional features or interactions.
+    - **Model Evaluation:** Validate the model with external datasets to ensure it generalizes well and reflects the importance of these predictors.
+    """)
 
 else:
-    st.write("Please upload a CSV file.")
+    st.write("Upload a CSV file to get started.")
