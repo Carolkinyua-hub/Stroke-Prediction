@@ -126,9 +126,27 @@ if uploaded_file is not None:
     })
     or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
 
-    # Display Odds Ratios
+    # Display Odds Ratios with Normal Range Line
     st.subheader('Odds Ratios for Features')
-    st.write(or_df)
+    fig_or, ax_or = plt.subplots(figsize=(10, 6))
+    sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
+    
+    # Add a line for the normal range of odds ratios
+    normal_range = 1.0
+    ax_or.axvline(x=normal_range, color='r', linestyle='--', label='Normal Range')
+    
+    # Annotate the normal range line
+    ax_or.text(normal_range + 0.05, len(or_df) - 0.5, 'Normal Range', color='r', va='center')
+    
+    # Add annotations
+    for index, value in enumerate(or_df['Odds Ratio']):
+        ax_or.text(value + 0.05, index, f'{value:.2f}', va='center', fontsize=10)
+    
+    ax_or.set_title('Odds Ratios for Features')
+    ax_or.set_xlabel('Odds Ratio')
+    ax_or.set_ylabel('Feature')
+    ax_or.legend()
+    st.pyplot(fig_or)
 
     # Create dashboard layout for metrics
     st.sidebar.header('Model Metrics')
@@ -161,6 +179,29 @@ if uploaded_file is not None:
         ax_feature.set_xlabel(feature)
         ax_feature.set_ylabel('Stroke Prevalence')
         st.pyplot(fig_feature)
+    
+    # Recommendations
+    st.subheader('Recommendations')
+    st.write(
+        """
+        Based on the analysis of the model's performance and the odds ratios for the features:
+        
+        - **Features with High Odds Ratios**: Features like Age, Heart Disease or Attack, and General Health have higher odds ratios, indicating they have a stronger association with stroke risk. Prioritizing these factors in preventative measures could be beneficial.
+        
+        - **Monitoring and Interventions**: Regular monitoring         - **Monitoring and Interventions**: Regular monitoring of individuals with high values in significant features (such as Age and Heart Disease or Attack) could help in early detection and intervention. Implementing lifestyle changes and medical check-ups focusing on these high-risk features can potentially reduce stroke incidence.
+
+        - **Model Improvements**: Consider incorporating additional features or data sources to enhance model performance. Regularly update the model with new data to adapt to changing patterns and improve predictive accuracy.
+
+        - **Public Health Campaigns**: Use insights from feature importances to tailor public health campaigns. For instance, focus on education around managing blood pressure and general health, given their significant impact on stroke risk.
+
+        - **Further Research**: Investigate the causal relationships between the identified features and stroke risk. Collaborate with healthcare professionals to validate the findings and explore new research avenues.
+
+        - **Stakeholder Engagement**: Share insights with healthcare providers and policymakers to inform strategies and guidelines. Providing actionable recommendations based on data can help in formulating effective health policies.
+
+        By implementing these recommendations, we can work towards reducing stroke risk and improving overall health outcomes.
+        """
+    )
 
 else:
     st.write("Please upload a CSV file.")
+
