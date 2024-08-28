@@ -108,7 +108,7 @@ if uploaded_file is not None:
     st.subheader('Model Evaluation Metrics')
     fig_metrics, ax_metrics = plt.subplots(figsize=(10, 6))
     sns.barplot(x='Percentage', y='Metric', data=metrics_df, palette='viridis')
-    for index, value in enumerate(metrics_df['Percentage']):
+    for index, value in enumerate (metrics_df['Percentage']):
         ax_metrics.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
     ax_metrics.set_title('Model Evaluation Metrics in Percentages')
     ax_metrics.set_xlabel('Percentage (%)')
@@ -150,3 +150,4 @@ if uploaded_file is not None:
 
 else:
     st.write("Please upload a CSV file.")
+
