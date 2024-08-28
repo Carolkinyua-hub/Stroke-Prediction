@@ -6,7 +6,7 @@ from sklearn.utils import shuffle
 from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.inspection import permutation_importance, PartialDependenceDisplay
+from sklearn.inspection import permutation_importance
 
 # Streamlit app configuration
 st.title('Stroke Prediction Model Interpretability')
@@ -42,23 +42,6 @@ if uploaded_file is not None:
     # Classification report
     report = classification_report(y, y_pred, output_dict=True)
 
-    # Ensure we're working with the correct label for the positive class (assuming '1' is the positive class)
-    if '1' in report:
-        positive_label = '1'
-    else:
-        positive_label = list(report.keys())[1]  # Fallback to the first label (excluding 'accuracy')
-
-    metrics = {
-        'accuracy': accuracy_score(y, y_pred) * 100,
-        'precision': report[positive_label]['precision'] * 100,
-        'recall': report[positive_label]['recall'] * 100,
-        'f1-score': report[positive_label]['f1-score'] * 100
-    }
-
-    # Create DataFrame for metrics
-    metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
-    metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
-
     # Permutation importance
     results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
     importances = results.importances_mean * 100
@@ -69,37 +52,31 @@ if uploaded_file is not None:
         'Importance': importances
     }).sort_values(by='Importance', ascending=False)
 
-    # Plot metrics and feature importance
-    fig, axes = plt.subplots(3, 1, figsize=(12, 18))
-
-    # Plot metrics
-    sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
-    for index, value in enumerate(metrics_df['Percentage']):
-        axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[0].set_title('Model Evaluation Metrics in Percentages')
-    axes[0].set_xlabel('Percentage (%)')
-    axes[0].set_xlim(0, 100)
+    # Filter top 5 important features
+    top_features = importance_df.head(5)
 
     # Plot feature importance
-    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
-    for index, value in enumerate(importance_df['Importance']):
-        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    axes[1].set_title('Permutation Feature Importance in Percentages')
-    axes[1].set_xlabel('Importance (%)')
-    axes[1].set_xlim(0, 100)
+    fig, axes = plt.subplots(2, 1, figsize=(12, 16))
 
-    # Plot partial dependence
-    display = PartialDependenceDisplay.from_estimator(model, X_scaled, [0, 1], ax=axes[2])
-    axes[2].set_title('Partial Dependence Plot')
-    axes[2].set_xlabel('Feature Value')
-    axes[2].set_ylabel('Predicted Probability')
+    sns.barplot(x='Importance', y='Feature', data=top_features, ax=axes[0], palette='plasma')
+    for index, value in enumerate(top_features['Importance']):
+        axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[0].set_title('Top 5 Feature Importances')
+    axes[0].set_xlabel('Importance (%)')
+    axes[0].set_xlim(0, 100)
+
+    # Plot feature vs. stroke prevalence
+    for feature in top_features['Feature']:
+        prevalence = balanced_df.groupby(feature)['Stroke'].mean() * 100
+        sns.lineplot(x=prevalence.index, y=prevalence.values, ax=axes[1], label=feature)
+
+    axes[1].set_title('Impact of Top Features on Stroke Prevalence')
+    axes[1].set_xlabel('Feature Value')
+    axes[1].set_ylabel('Stroke Prevalence (%)')
+    axes[1].legend(title='Feature')
 
     plt.tight_layout()
     st.pyplot(fig)
-
-    # Textual Insights and Recommendations
-    st.write("**Insight:** Age and Blood Pressure are critical features influencing stroke likelihood.")
-    st.write("**Recommendation:** Focus on monitoring and managing blood pressure, especially in older patients, to reduce stroke risk.")
 
 else:
     st.write("Please upload a CSV file.")
