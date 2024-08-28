@@ -20,6 +20,9 @@ if uploaded_file is not None:
     # Load the data
     data = pd.read_csv(uploaded_file)
     
+    # Create a column with descriptive stroke labels
+    data['Stroke_Label'] = data['Stroke'].map({0: 'No Stroke', 1: 'Stroke'})
+    
     st.sidebar.header('Data Overview')
     st.sidebar.write("### Dataset Sample")
     st.sidebar.write(data.head())
@@ -39,7 +42,7 @@ if uploaded_file is not None:
     balanced_df = shuffle(balanced_df, random_state=42).reset_index(drop=True)
 
     # Separate features and target in the balanced dataset
-    X_balanced = balanced_df.drop('Stroke', axis=1)  # Features
+    X_balanced = balanced_df.drop(['Stroke', 'Stroke_Label'], axis=1)  # Features
     y = balanced_df['Stroke']  # Target variable
 
     # Scale the data
@@ -63,25 +66,28 @@ if uploaded_file is not None:
         positive_label = positive_labels[0]
         metrics = {
             'accuracy': accuracy_score(y, y_pred) * 100,
-            'precision': report[positive_label]['precision'] * 100,
-            'recall': report[positive_label]['recall'] * 100,
-            'f1-score': report[positive_label]['f1-score'] * 100
+            'precision_stroke': report[positive_label]['precision'] * 100,
+            'recall_stroke': report[positive_label]['recall'] * 100,
+            'f1_score_stroke': report[positive_label]['f1-score'] * 100,
+            'precision_no_stroke': report['0']['precision'] * 100,
+            'recall_no_stroke': report['0']['recall'] * 100,
+            'f1_score_no_stroke': report['0']['f1-score'] * 100
         }
     else:
         st.write("Positive label not found in the report.")
         metrics = {
             'accuracy': accuracy_score(y, y_pred) * 100,
-            'precision': 0,
-            'recall': 0,
-            'f1-score': 0
+            'precision_stroke': 0,
+            'recall_stroke': 0,
+            'f1_score_stroke': 0,
+            'precision_no_stroke': 0,
+            'recall_no_stroke': 0,
+            'f1_score_no_stroke': 0
         }
 
     # Create DataFrame for metrics
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
     metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
-
-    # Ensure no empty or zero values cause an empty bar
-    metrics_df = metrics_df[metrics_df['Percentage'] > 0]
 
     # Compute permutation importance
     results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
@@ -101,20 +107,12 @@ if uploaded_file is not None:
     # Create dashboard layout
     st.sidebar.header('Model Metrics')
     st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
-    st.sidebar.write(f"### Precision: {metrics['precision']:.2f}%")
-    st.sidebar.write(f"### Recall: {metrics['recall']:.2f}%")
-    st.sidebar.write(f"### F1 Score: {metrics['f1-score']:.2f}%")
-
-    st.subheader('Model Evaluation Metrics')
-    fig_metrics, ax_metrics = plt.subplots(figsize=(10, 6))
-    sns.barplot(x='Percentage', y='Metric', data=metrics_df, palette='viridis')
-    for index, value in enumerate (metrics_df['Percentage']):
-        ax_metrics.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    ax_metrics.set_title('Model Evaluation Metrics in Percentages')
-    ax_metrics.set_xlabel('Percentage (%)')
-    ax_metrics.set_ylabel('Metric')
-    ax_metrics.set_xlim(0, 100)
-    st.pyplot(fig_metrics)
+    st.sidebar.write(f"### Precision (Stroke): {metrics['precision_stroke']:.2f}%")
+    st.sidebar.write(f"### Recall (Stroke): {metrics['recall_stroke']:.2f}%")
+    st.sidebar.write(f"### F1 Score (Stroke): {metrics['f1_score_stroke']:.2f}%")
+    st.sidebar.write(f"### Precision (No Stroke): {metrics['precision_no_stroke']:.2f}%")
+    st.sidebar.write(f"### Recall (No Stroke): {metrics['recall_no_stroke']:.2f}%")
+    st.sidebar.write(f"### F1 Score (No Stroke): {metrics['f1_score_no_stroke']:.2f}%")
 
     st.subheader('Feature Importance')
     fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
@@ -138,11 +136,15 @@ if uploaded_file is not None:
         st.pyplot(fig_feature)
 
     st.subheader('Distribution of Predicted Stroke Cases')
-    prediction_counts = pd.Series(y_pred).value_counts().reset_index()
+    prediction_df = pd.DataFrame({'True Stroke': y.map({0: 'No Stroke', 1: 'Stroke'}), 
+                                   'Predicted Stroke': y_pred.map({0: 'No Stroke', 1: 'Stroke'})})
+    prediction_counts = prediction_df['Predicted Stroke'].value_counts().reset_index()
     prediction_counts.columns = ['Predicted Stroke', 'Count']
 
     fig_pred, ax_pred = plt.subplots(figsize=(8, 6))
     sns.barplot(x='Predicted Stroke', y='Count', data=prediction_counts, palette='coolwarm', ax=ax_pred)
+    for index, value in enumerate(prediction_counts['Count']):
+        ax_pred.text(index, value + 1, f'{value}', ha='center', fontsize=10)
     ax_pred.set_title('Predicted Stroke vs Non-Stroke Cases')
     ax_pred.set_xlabel('Predicted Stroke')
     ax_pred.set_ylabel('Count')
@@ -150,4 +152,3 @@ if uploaded_file is not None:
 
 else:
     st.write("Please upload a CSV file.")
-
