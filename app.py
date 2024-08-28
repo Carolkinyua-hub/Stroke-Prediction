@@ -8,9 +8,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.inspection import permutation_importance
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import log_loss
 
 # Streamlit app configuration
-st.set_page_config(page_title="Stroke Prediction Dashboard", layout="wide")
+st.set_page_config(page_title="Stroke Risk Assesment", layout="wide")
 st.title('Stroke Prediction Dashboard')
 
 # Upload CSV file
@@ -110,19 +112,6 @@ if uploaded_file is not None:
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-    # Compute Odds Ratios (OR) for each feature
-    def calculate_odds_ratio(feature_name):
-        odds_ratio = np.exp(np.log1p(X_balanced[feature_name]).mean())  # Simplified OR calculation
-        return odds_ratio
-
-    odds_ratios = {feature: calculate_odds_ratio(feature) for feature in features}
-
-    # Display Odds Ratios
-    st.subheader('Odds Ratios for Features')
-    or_df = pd.DataFrame(list(odds_ratios.items()), columns=['Feature', 'Odds Ratio'])
-    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
-    st.write(or_df)
-
     # Create dashboard layout for metrics
     st.sidebar.header('Model Metrics')
     st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
@@ -145,6 +134,37 @@ if uploaded_file is not None:
     ax_importance.set_xlim(0, 100)
     st.pyplot(fig_importance)
 
+    # Compute and visualize Odds Ratios
+    st.subheader('Odds Ratio Visualization')
+
+    # Fit a logistic regression model for odds ratios
+    logistic_model = LogisticRegression()
+    logistic_model.fit(X_scaled, y)
+
+    # Compute odds ratios
+    odds_ratios = np.exp(logistic_model.coef_[0])
+    features = X_balanced.columns
+
+    # Create DataFrame for odds ratios
+    or_df = pd.DataFrame({
+        'Feature': features,
+        'Odds Ratio': odds_ratios
+    })
+
+    # Sort odds ratios in descending order
+    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
+
+    # Create Bar Plot for Odds Ratios
+    fig_or, ax_or = plt.subplots(figsize=(10, 6))
+    sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
+    for index, value in enumerate(or_df['Odds Ratio']):
+        ax_or.text(value + 0.1, index, f'{value:.2f}', va='center', fontsize=10)
+    ax_or.set_title('Odds Ratios for Stroke Prediction Features')
+    ax_or.set_xlabel('Odds Ratio')
+    ax_or.set_ylabel('Feature')
+    st.pyplot(fig_or)
+
+    # Impact of Top Features on Stroke Prevalence
     st.subheader('Impact of Top Features on Stroke Prevalence')
     top_features = importance_df.head(5)
     for feature in top_features['Feature']:
