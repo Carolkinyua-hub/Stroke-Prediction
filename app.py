@@ -6,7 +6,7 @@ from sklearn.utils import shuffle
 from sklearn.metrics import classification_report, accuracy_score, roc_curve, precision_recall_curve
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.inspection import permutation_importance, plot_partial_dependence
+from sklearn.inspection import permutation_importance, PartialDependenceDisplay
 
 # Streamlit app configuration
 st.title('Stroke Prediction Model Interpretability')
@@ -84,7 +84,7 @@ if uploaded_file is not None:
     axes[1].set_xlim(0, 100)
 
     # Plot partial dependence
-    plot_partial_dependence(model, X_scaled, features=[0, 1], grid_resolution=50, ax=axes[2])
+    display = PartialDependenceDisplay.from_estimator(model, X_scaled, [0, 1], ax=axes[2])
     axes[2].set_title('Partial Dependence Plot')
     axes[2].set_xlabel('Feature Value')
     axes[2].set_ylabel('Predicted Probability')
