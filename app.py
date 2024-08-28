@@ -41,8 +41,25 @@ if uploaded_file is not None:
 
     # Classification report
     report = classification_report(y, y_pred, output_dict=True)
-    st.write("Classification Report:")
-    st.json(report)
+    st.write("### Classification Report:")
+    
+    # Create a DataFrame for the classification report
+    report_df = pd.DataFrame(report).transpose().reset_index()
+    report_df = report_df.rename(columns={'index': 'Metric'})
+    
+    # Filter relevant metrics
+    metrics = ['precision', 'recall', 'f1-score']
+    filtered_df = report_df[report_df['Metric'].isin(metrics)]
+    
+    # Bar plot for classification report
+    fig, ax = plt.subplots(figsize=(10, 6))
+    filtered_df.set_index('Metric').drop('support', axis=1).plot(kind='bar', ax=ax, color=['#1f77b4', '#ff7f0e'])
+    ax.set_title('Classification Report Metrics')
+    ax.set_ylabel('Score')
+    ax.set_xlabel('Metric')
+    ax.set_xticklabels(['No Stroke (0.0)', 'Stroke (1.0)'], rotation=0)
+    plt.legend(title='Metric')
+    st.pyplot(fig)
 
     # Permutation importance
     results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
@@ -70,13 +87,6 @@ if uploaded_file is not None:
     axes[0].set_title('Top 5 Feature Importances')
     axes[0].set_xlabel('Importance (%)')
     axes[0].set_xlim(0, 100)
-
-    # Scatterplots for top features
-    for i, feature in enumerate(top_features['Feature']):
-        sns.scatterplot(x=feature, y='Stroke', data=balanced_df, ax=axes[i + 1])
-        axes[i + 1].set_title(f'{feature} vs. Stroke Prevalence')
-        axes[i + 1].set_xlabel(feature)
-        axes[i + 1].set_ylabel('Stroke')
 
     # Plot correlation heatmap
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, ax=axes[-1], fmt=".2f")
