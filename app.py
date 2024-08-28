@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.inspection import permutation_importance
 
 # Streamlit app configuration
 st.set_page_config(page_title="Stroke Prediction Dashboard", layout="wide")
@@ -96,41 +97,34 @@ if uploaded_file is not None:
     metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
 
     # Compute permutation importance
-    results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
-    importances = results.importances_mean
-
-    # Convert permutation importances to percentages
-    importances_percentage = importances * 100
-    features = X_balanced.columns  # Feature names
-
-    # Create DataFrame for permutation importance
-    importance_df = pd.DataFrame({
-        'Feature': features,
-        'Importance': importances_percentage
-    })
-    importance_df = importance_df.sort_values(by='Importance', ascending=False)
-
-    # Create dashboard layout for metrics
-    st.sidebar.header('Model Metrics')
-    st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
-    st.sidebar.write(f"### Precision (Stroke): {metrics['precision_stroke']:.2f}%")
-    st.sidebar.write(f"### Recall (Stroke): {metrics['recall_stroke']:.2f}%")
-    st.sidebar.write(f"### F1 Score (Stroke): {metrics['f1_score_stroke']:.2f}%")
-    st.sidebar.write(f"### Precision (No Stroke): {metrics['precision_no_stroke']:.2f}%")
-    st.sidebar.write(f"### Recall (No Stroke): {metrics['recall_no_stroke']:.2f}%")
-    st.sidebar.write(f"### F1 Score (No Stroke): {metrics['f1_score_no_stroke']:.2f}%")
-
-    # Feature Importance
     st.subheader('Feature Importance')
-    fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
-    sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma')
-    for index, value in enumerate(importance_df['Importance']):
-        ax_importance.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    ax_importance.set_title('Permutation Feature Importance in Percentages')
-    ax_importance.set_xlabel('Importance (%)')
-    ax_importance.set_ylabel('Feature')
-    ax_importance.set_xlim(0, 100)
-    st.pyplot(fig_importance)
+    try:
+        results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
+        importances = results.importances_mean
+
+        # Convert permutation importances to percentages
+        importances_percentage = importances * 100
+        features = X_balanced.columns  # Feature names
+
+        # Create DataFrame for permutation importance
+        importance_df = pd.DataFrame({
+            'Feature': features,
+            'Importance': importances_percentage
+        })
+        importance_df = importance_df.sort_values(by='Importance', ascending=False)
+
+        # Create dashboard layout for metrics
+        fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
+        sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma')
+        for index, value in enumerate(importance_df['Importance']):
+            ax_importance.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+        ax_importance.set_title('Permutation Feature Importance in Percentages')
+        ax_importance.set_xlabel('Importance (%)')
+        ax_importance.set_ylabel('Feature')
+        ax_importance.set_xlim(0, 100)
+        st.pyplot(fig_importance)
+    except Exception as e:
+        st.error(f"Error calculating permutation importance: {e}")
 
     # Compute and visualize Odds Ratios
     st.subheader('Odds Ratio Visualization')
