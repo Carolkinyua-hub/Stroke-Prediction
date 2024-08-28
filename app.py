@@ -19,7 +19,7 @@ uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
 if uploaded_file is not None:
     # Load the data
     data = pd.read_csv(uploaded_file)
-    
+
     # Create a column with descriptive stroke labels
     data['Stroke_Label'] = data['Stroke'].map({0.0: 'No Stroke', 1.0: 'Stroke'})
     
@@ -59,6 +59,24 @@ if uploaded_file is not None:
     # Convert y_pred to a Pandas Series for mapping
     y_pred_series = pd.Series(y_pred)
 
+    # Distribution of Predicted Stroke Cases
+    st.subheader('Distribution of Predicted Stroke Cases')
+    prediction_df = pd.DataFrame({
+        'True Stroke': data['Stroke_Label'], 
+        'Predicted Stroke': y_pred_series.map({0.0: 'No Stroke', 1.0: 'Stroke'})
+    })
+    prediction_counts = prediction_df['Predicted Stroke'].value_counts().reset_index()
+    prediction_counts.columns = ['Predicted Stroke', 'Count']
+
+    fig_pred, ax_pred = plt.subplots(figsize=(8, 6))
+    sns.barplot(x='Predicted Stroke', y='Count', data=prediction_counts, palette='coolwarm', ax=ax_pred)
+    for index, value in enumerate(prediction_counts['Count']):
+        ax_pred.text(index, value + 1, f'{value}', ha='center', fontsize=10)
+    ax_pred.set_title('Predicted Stroke vs Non-Stroke Cases')
+    ax_pred.set_xlabel('Predicted Stroke')
+    ax_pred.set_ylabel('Count')
+    st.pyplot(fig_pred)
+
     # Compute classification metrics
     report = classification_report(y, y_pred, output_dict=True)
 
@@ -92,7 +110,7 @@ if uploaded_file is not None:
     })
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-    # Create dashboard layout
+    # Create dashboard layout for metrics
     st.sidebar.header('Model Metrics')
     st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
     st.sidebar.write(f"### Precision (Stroke): {metrics['precision_stroke']:.2f}%")
@@ -102,6 +120,7 @@ if uploaded_file is not None:
     st.sidebar.write(f"### Recall (No Stroke): {metrics['recall_no_stroke']:.2f}%")
     st.sidebar.write(f"### F1 Score (No Stroke): {metrics['f1_score_no_stroke']:.2f}%")
 
+    # Feature Importance
     st.subheader('Feature Importance')
     fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
     sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma')
@@ -122,23 +141,6 @@ if uploaded_file is not None:
         ax_feature.set_xlabel(feature)
         ax_feature.set_ylabel('Stroke Prevalence')
         st.pyplot(fig_feature)
-
-    st.subheader('Distribution of Predicted Stroke Cases')
-    prediction_df = pd.DataFrame({
-        'True Stroke': data['Stroke_Label'], 
-        'Predicted Stroke': y_pred_series.map({0.0: 'No Stroke', 1.0: 'Stroke'})
-    })
-    prediction_counts = prediction_df['Predicted Stroke'].value_counts().reset_index()
-    prediction_counts.columns = ['Predicted Stroke', 'Count']
-
-    fig_pred, ax_pred = plt.subplots(figsize=(8, 6))
-    sns.barplot(x='Predicted Stroke', y='Count', data=prediction_counts, palette='coolwarm', ax=ax_pred)
-    for index, value in enumerate(prediction_counts['Count']):
-        ax_pred.text(index, value + 1, f'{value}', ha='center', fontsize=10)
-    ax_pred.set_title('Predicted Stroke vs Non-Stroke Cases')
-    ax_pred.set_xlabel('Predicted Stroke')
-    ax_pred.set_ylabel('Count')
-    st.pyplot(fig_pred)
 
 else:
     st.write("Please upload a CSV file.")
