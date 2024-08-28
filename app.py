@@ -55,8 +55,11 @@ if uploaded_file is not None:
     # Filter top 5 important features
     top_features = importance_df.head(5)
 
+    # Compute correlation matrix for features with stroke prevalence
+    correlation_matrix = balanced_df[top_features['Feature'].tolist() + ['Stroke']].corr()
+
     # Plot feature importance and scatterplots
-    fig, axes = plt.subplots(len(top_features) + 1, 1, figsize=(12, 4 * (len(top_features) + 1)))
+    fig, axes = plt.subplots(len(top_features) + 2, 1, figsize=(12, 4 * (len(top_features) + 2)))
 
     # Plot top 5 feature importances
     sns.barplot(x='Importance', y='Feature', data=top_features, ax=axes[0], palette='plasma')
@@ -72,6 +75,10 @@ if uploaded_file is not None:
         axes[i + 1].set_title(f'{feature} vs. Stroke Prevalence')
         axes[i + 1].set_xlabel(feature)
         axes[i + 1].set_ylabel('Stroke')
+
+    # Plot correlation heatmap
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, ax=axes[-1], fmt=".2f")
+    axes[-1].set_title('Correlation Heatmap of Top Features and Stroke')
 
     plt.tight_layout()
     st.pyplot(fig)
