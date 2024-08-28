@@ -41,6 +41,8 @@ if uploaded_file is not None:
 
     # Classification report
     report = classification_report(y, y_pred, output_dict=True)
+    st.write("Classification Report:")
+    st.json(report)
 
     # Permutation importance
     results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
@@ -58,7 +60,7 @@ if uploaded_file is not None:
     # Compute correlation matrix for features with stroke prevalence
     correlation_matrix = balanced_df[top_features['Feature'].tolist() + ['Stroke']].corr()
 
-    # Plot feature importance and scatterplots
+    # Create plots
     fig, axes = plt.subplots(len(top_features) + 2, 1, figsize=(12, 4 * (len(top_features) + 2)))
 
     # Plot top 5 feature importances
@@ -82,6 +84,30 @@ if uploaded_file is not None:
 
     plt.tight_layout()
     st.pyplot(fig)
+
+    # Additional insights
+    st.write("### Additional Insights:")
+
+    # Distribution of top features
+    st.write("#### Distribution of Top Features")
+    for feature in top_features['Feature']:
+        fig, ax = plt.subplots()
+        sns.histplot(balanced_df[feature], kde=True, ax=ax)
+        ax.set_title(f'Distribution of {feature}')
+        ax.set_xlabel(feature)
+        ax.set_ylabel('Frequency')
+        st.pyplot(fig)
+
+    # Health impact of top features (if relevant data available)
+    if 'HealthMetric' in balanced_df.columns:
+        st.write("#### Health Impact of Top Features")
+        for feature in top_features['Feature']:
+            fig, ax = plt.subplots()
+            sns.boxplot(x='Stroke', y=feature, data=balanced_df, ax=ax)
+            ax.set_title(f'{feature} by Stroke Status')
+            ax.set_xlabel('Stroke')
+            ax.set_ylabel(feature)
+            st.pyplot(fig)
 
 else:
     st.write("Please upload a CSV file.")
