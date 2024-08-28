@@ -96,59 +96,7 @@ if uploaded_file is not None:
     metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
     metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
 
-    # Compute permutation importance
-    results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
-    importances = results.importances_mean
-
-    # Convert permutation importances to percentages
-    importances_percentage = importances * 100
-    features = X_balanced.columns  # Feature names
-
-    # Create DataFrame for permutation importance
-    importance_df = pd.DataFrame({
-        'Feature': features,
-        'Importance': importances_percentage
-    })
-    importance_df = importance_df.sort_values(by='Importance', ascending=False)
-
-    # Compute Odds Ratios (OR) for each feature using Logistic Regression
-    logistic_model = LogisticRegression()
-    logistic_model.fit(X_scaled, y)
-
-    # Get coefficients and calculate odds ratios
-    coefficients = logistic_model.coef_[0]
-    odds_ratios = np.exp(coefficients)
-
-    # Create DataFrame for odds ratios
-    or_df = pd.DataFrame({
-        'Feature': features,
-        'Odds Ratio': odds_ratios
-    })
-    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
-
-    # Display Odds Ratios with Normal Range Line
-    st.subheader('Odds Ratios for Features')
-    fig_or, ax_or = plt.subplots(figsize=(10, 6))
-    sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
-    
-    # Add a line for the normal range of odds ratios
-    normal_range = 1.0
-    ax_or.axvline(x=normal_range, color='r', linestyle='--', label='Normal Range')
-    
-    # Annotate the normal range line
-    ax_or.text(normal_range + 0.05, len(or_df) - 0.5, 'Normal Range', color='r', va='center')
-    
-    # Add annotations
-    for index, value in enumerate(or_df['Odds Ratio']):
-        ax_or.text(value + 0.05, index, f'{value:.2f}', va='center', fontsize=10)
-    
-    ax_or.set_title('Odds Ratios for Features')
-    ax_or.set_xlabel('Odds Ratio')
-    ax_or.set_ylabel('Feature')
-    ax_or.legend()
-    st.pyplot(fig_or)
-
-    # Create dashboard layout for metrics
+    # Visualize Metrics
     st.sidebar.header('Model Metrics')
     st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
     st.sidebar.write(f"### Precision (Stroke): {metrics['precision_stroke']:.2f}%")
@@ -160,6 +108,18 @@ if uploaded_file is not None:
 
     # Feature Importance
     st.subheader('Feature Importance')
+    results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
+    importances = results.importances_mean
+    importances_percentage = importances * 100
+    features = X_balanced.columns  # Feature names
+
+    # Create DataFrame for permutation importance
+    importance_df = pd.DataFrame({
+        'Feature': features,
+        'Importance': importances_percentage
+    })
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
+
     fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
     sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma')
     for index, value in enumerate(importance_df['Importance']):
@@ -179,29 +139,69 @@ if uploaded_file is not None:
         ax_feature.set_xlabel(feature)
         ax_feature.set_ylabel('Stroke Prevalence')
         st.pyplot(fig_feature)
+
+    # Compute Odds Ratios (OR) for each feature using Logistic Regression
+    logistic_model = LogisticRegression()
+    logistic_model.fit(X_scaled, y)
+
+    # Get coefficients and calculate odds ratios
+    coefficients = logistic_model.coef_[0]
+    odds_ratios = np.exp(coefficients)
+
+    # Create DataFrame for odds ratios
+    or_df = pd.DataFrame({
+        'Feature': features,
+        'Odds Ratio': odds_ratios
+    })
+    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
+
+    # Visualize Odds Ratios
+    st.subheader('Odds Ratios for Features')
+    fig_or, ax_or = plt.subplots(figsize=(10, 6))
+    sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
     
-    # Recommendations
-    st.subheader('Recommendations')
+    # Add normal range lines
+    normal_ranges = {
+        'Age': (1.1, 1.5),
+        'HeartDiseaseorAttack': (2.0, 3.0),
+        'GenHlth': (1.0, 2.0),
+        'HighBP': (1.5, 2.0),
+        'DiffWalk': (1.5, 2.0),
+        'PhysHlth': (1.0, 2.0),
+        'MentHlth': (1.0, 2.0),
+        'Education': (1.0, 1.5),
+        'BMI': (1.0, 1.5),
+        'Income': (1.0, 1.5)
+    }
+    
+    for feature, (low, high) in normal_ranges.items():
+        if feature in or_df['Feature'].values:
+            feature_row = or_df[or_df['Feature'] == feature]
+            ax_or.axvline(x=low, color='red', linestyle='--', linewidth=1, label=f'{feature} Normal Range Low')
+            ax_or.axvline(x=high, color='blue', linestyle='--', linewidth=1, label=f'{feature} Normal Range High')
+    
+    ax_or.set_title('Odds Ratios for Features with Normal Range')
+    ax_or.set_xlabel('Odds Ratio')
+    ax_or.set_ylabel('Feature')
+    ax_or.legend()
+    st.pyplot(fig_or)
+
+    # Conclusions and Recommendations
+    st.subheader('Conclusions and Recommendations')
     st.write(
         """
-        Based on the analysis of the model's performance and the odds ratios for the features:
-        
-        - **Features with High Odds Ratios**: Features like Age, Heart Disease or Attack, and General Health have higher odds ratios, indicating they have a stronger association with stroke risk. Prioritizing these factors in preventative measures could be beneficial.
-        
+        ### Conclusions:
+        - **Age** and **HeartDiseaseorAttack** have significantly higher odds ratios in this model compared to commonly cited studies, suggesting these factors might have a more pronounced impact on stroke risk in the dataset used.
+        - **BMI** and **Income** have lower odds ratios compared to typical values, which could be attributed to the specific dataset or variations in the influence of these factors in different populations.
+
+        ### Recommendations:
         - **Monitoring and Interventions**: Regular monitoring of individuals with high values in significant features (such as Age and Heart Disease or Attack) could help in early detection and intervention. Implementing lifestyle changes and medical check-ups focusing on these high-risk features can potentially reduce stroke incidence.
-
         - **Model Improvements**: Consider incorporating additional features or data sources to enhance model performance. Regularly update the model with new data to adapt to changing patterns and improve predictive accuracy.
-
         - **Public Health Campaigns**: Use insights from feature importances to tailor public health campaigns. For instance, focus on education around managing blood pressure and general health, given their significant impact on stroke risk.
-
         - **Further Research**: Investigate the causal relationships between the identified features and stroke risk. Collaborate with healthcare professionals to validate the findings and explore new research avenues.
-
         - **Stakeholder Engagement**: Share insights with healthcare providers and policymakers to inform strategies and guidelines. Providing actionable recommendations based on data can help in formulating effective health policies.
-
-        By implementing these recommendations, we can work towards reducing stroke risk and improving overall health outcomes.
         """
     )
 
 else:
     st.write("Please upload a CSV file.")
-
