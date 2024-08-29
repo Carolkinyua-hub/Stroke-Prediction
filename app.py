@@ -181,7 +181,7 @@ if uploaded_file is not None:
         - **Age** and **HeartDiseaseorAttack** have significantly higher odds ratios in this model compared to commonly cited studies, suggesting these factors might have a more pronounced impact on stroke risk in the dataset used.
         - **BMI** and **Income** have lower odds ratios compared to typical values, which could be attributed to the specific dataset or variations in the influence of these factors in different populations.
 
-        ### Recommendations:
+        ### MESO Level Recommendations:
         - **Monitoring and Interventions**: Regular monitoring of individuals with high values in significant features  could help in early detection and intervention. Implementing lifestyle changes and medical check-ups focusing on these high-risk features can potentially reduce stroke incidence.
         - **Model Improvements**: Consider incorporating additional features or data sources to enhance model performance. Regularly update the model with new data to adapt to changing patterns and improve predictive accuracy.
         - **Public Health Campaigns**: Use insights from feature importances to tailor public health campaigns, focus on education around managing blood pressure and general health, given their significant impact on stroke risk.
