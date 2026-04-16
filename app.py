@@ -1,260 +1,120 @@
-# app.py
-# Streamlit version of your working notebook logic
-# Upload CSV -> remove IDs -> FAMD(8) -> KMeans(4) -> reattach IDs -> profiles + visuals
-
 import streamlit as st
 import pandas as pd
+import joblib
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.utils import shuffle
+from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
-import prince
+import seaborn as sns
+import numpy as np
+from sklearn.inspection import permutation_importance
 
-from sklearn.cluster import KMeans
+# Streamlit app configuration
+st.title('Stroke Prediction App')
 
-# =====================================================
-# PAGE CONFIG
-# =====================================================
-st.set_page_config(
-    page_title="SME Clustering App",
-    layout="wide"
-)
+# Upload CSV file
+uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
 
-st.title("SME Clustering App")
-st.caption(
-    "Upload a CSV file to cluster SMEs using FAMD + KMeans."
-)
-
-# =====================================================
-# FIXED SETTINGS
-# =====================================================
-N_COMPONENTS = 8
-N_CLUSTERS = 4
-
-id_cols = [
-    "Company name",
-    "Company Email",
-    "Company number",
-    "City"
-]
-
-# =====================================================
-# FILE UPLOAD
-# =====================================================
-uploaded_file = st.file_uploader(
-    "Upload CSV File",
-    type=["csv"]
-)
-
-# =====================================================
-# MAIN APP
-# =====================================================
 if uploaded_file is not None:
+    # Load the data
+    data = pd.read_csv(uploaded_file)
 
-    try:
-        # ---------------------------------------------
-        # LOAD DATA
-        # ---------------------------------------------
-        df = pd.read_csv(uploaded_file)
+    # Separate classes
+    majority_class = data[data['Stroke'] == 0]
+    minority_class = data[data['Stroke'] == 1]
 
-        st.subheader("Dataset Preview")
-        st.dataframe(df.head())
+    # Downsample the majority class
+    majority_downsampled = majority_class.sample(n=len(minority_class), random_state=42)
 
-        st.write(f"Rows: {df.shape[0]} | Columns: {df.shape[1]}")
+    # Combine the minority class with the downsampled majority class
+    balanced_df = pd.concat([minority_class, majority_downsampled])
 
-        # ---------------------------------------------
-        # IDENTIFY ID COLUMNS PRESENT
-        # ---------------------------------------------
-        existing_ids = [col for col in id_cols if col in df.columns]
+    # Shuffle the dataset to ensure the classes are mixed
+    balanced_df = shuffle(balanced_df, random_state=42).reset_index(drop=True)
 
-        ids = df[existing_ids].copy()
+    # Separate features and target in the balanced dataset
+    X_balanced = balanced_df.drop('Stroke', axis=1)  # Features
+    y = balanced_df['Stroke']  # Target variable
 
-        # ---------------------------------------------
-        # REMOVE IDS
-        # ---------------------------------------------
-        X = df.drop(columns=existing_ids, errors="ignore").copy()
+    # Scale the data
+    scaler = MinMaxScaler()
+    X_scaled = scaler.fit_transform(X_balanced)
 
-        # ---------------------------------------------
-        # RUN MODEL
-        # ---------------------------------------------
-        if st.button("Run Analysis"):
+    # Load the pre-trained Neural Network model
+    model = joblib.load('neural_network_model_selected_features.joblib')
 
-            with st.spinner("Running clustering model..."):
+    # Make predictions on the data
+    y_pred_prob = model.predict_proba(X_scaled)[:, 1]
+    y_pred = model.predict(X_scaled)
 
-                # FAMD
-                famd = prince.FAMD(
-                    n_components=N_COMPONENTS,
-                    random_state=42
-                )
+    # Compute classification metrics
+    report = classification_report(y, y_pred, output_dict=True)
 
-                X_famd = famd.fit_transform(X)
+    # Determine positive label (assuming binary classification)
+    positive_labels = [label for label in report if label not in ['accuracy', 'macro avg', 'weighted avg']]
+    
+    if positive_labels:
+        positive_label = positive_labels[0]
+        metrics = {
+            'accuracy': accuracy_score(y, y_pred) * 100,
+            'precision': report[positive_label]['precision'] * 100,
+            'recall': report[positive_label]['recall'] * 100,
+            'f1-score': report[positive_label]['f1-score'] * 100
+        }
+    else:
+        st.write("Positive label not found in the report.")
+        metrics = {
+            'accuracy': accuracy_score(y, y_pred) * 100,
+            'precision': 0,
+            'recall': 0,
+            'f1-score': 0
+        }
 
-                # KMeans
-                kmeans = KMeans(
-                    n_clusters=N_CLUSTERS,
-                    random_state=42,
-                    n_init=10
-                )
+    # Create DataFrame for metrics
+    metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
+    metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
 
-                clusters = kmeans.fit_predict(X_famd)
+    # Ensure no empty or zero values cause an empty bar
+    metrics_df = metrics_df[metrics_df['Percentage'] > 0]
 
-            # -----------------------------------------
-            # FAMD COORDINATES
-            # -----------------------------------------
-            X_famd_df = X_famd.copy()
-            X_famd_df.columns = [
-                f"dim_{i}" for i in range(X_famd_df.shape[1])
-            ]
+    # Compute permutation importance
+    results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
+    importances = results.importances_mean
 
-            # -----------------------------------------
-            # CLUSTER LABELS
-            # -----------------------------------------
-            clusters_df = pd.DataFrame(
-                {"cluster": clusters},
-                index=X.index
-            )
+    # Convert permutation importances to percentages
+    importances_percentage = importances * 100
+    features = X_balanced.columns  # Feature names
 
-            # -----------------------------------------
-            # REATTACH IDS
-            # -----------------------------------------
-            result_df = pd.concat(
-                [
-                    ids.reset_index(drop=True),
-                    X_famd_df.reset_index(drop=True),
-                    clusters_df.reset_index(drop=True)
-                ],
-                axis=1
-            )
+    # Create DataFrame for permutation importance
+    importance_df = pd.DataFrame({
+        'Feature': features,
+        'Importance': importances_percentage
+    })
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
 
-            # -----------------------------------------
-            # SHOW RESULTS
-            # -----------------------------------------
-            st.subheader("Clustered Results")
-            st.dataframe(result_df)
+    # Plot metrics and feature importance
+    fig, axes = plt.subplots(2, 1, figsize=(12, 14))
+    
+    # Plot metrics
+    sns.barplot(x='Percentage', y='Metric', data=metrics_df, ax=axes[0], palette='viridis')
+    for index, value in enumerate(metrics_df['Percentage']):
+        axes[0].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[0].set_title('Model Evaluation Metrics in Percentages')
+    axes[0].set_xlabel('Percentage (%)')
+    axes[0].set_ylabel('Metric')
+    axes[0].set_xlim(0, 100)
 
-            # -----------------------------------------
-            # NUMERIC PROFILE
-            # -----------------------------------------
-            numerical_cols = X.select_dtypes(
-                include=["number"]
-            ).columns
+    # Plot feature importance
+    sns.barplot(x='Importance', y='Feature', data=importance_df, ax=axes[1], palette='plasma')
+    for index, value in enumerate(importance_df['Importance']):
+        axes[1].text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
+    axes[1].set_title('Permutation Feature Importance in Percentages')
+    axes[1].set_xlabel('Importance (%)')
+    axes[1].set_ylabel('Feature')
+    axes[1].set_xlim(0, 100)
 
-            if len(numerical_cols) > 0:
-
-                cluster_profile_num = X.groupby(
-                    clusters
-                )[numerical_cols].mean()
-
-                st.subheader("Numeric Cluster Profile")
-                st.dataframe(cluster_profile_num)
-
-            # -----------------------------------------
-            # CATEGORICAL PROFILE
-            # -----------------------------------------
-            categorical_cols = X.select_dtypes(
-                include=["object", "category"]
-            ).columns.tolist()
-
-            if len(categorical_cols) > 0:
-
-                st.subheader("Categorical Visualisation")
-
-                selected_col = st.selectbox(
-                    "Choose categorical feature",
-                    categorical_cols
-                )
-
-                cross = pd.crosstab(
-                    clusters,
-                    X[selected_col],
-                    normalize="index"
-                )
-
-                st.dataframe(cross)
-
-                fig, ax = plt.subplots(
-                    figsize=(12, 6)
-                )
-
-                cross.plot(
-                    kind="bar",
-                    stacked=True,
-                    ax=ax
-                )
-
-                ax.set_title(
-                    f"{selected_col} by Cluster"
-                )
-
-                ax.set_xlabel("Cluster")
-                ax.set_ylabel("Proportion")
-
-                plt.xticks(rotation=0)
-                plt.tight_layout()
-
-                st.pyplot(fig)
-
-            # -----------------------------------------
-            # CLUSTER COUNTS
-            # -----------------------------------------
-            st.subheader("Cluster Counts")
-
-            counts = result_df["cluster"] \
-                .value_counts() \
-                .sort_index()
-
-            st.bar_chart(counts)
-
-            # -----------------------------------------
-            # FAMD SCATTER
-            # -----------------------------------------
-            st.subheader("Cluster Map")
-
-            fig2, ax2 = plt.subplots(
-                figsize=(8, 5)
-            )
-
-            ax2.scatter(
-                X_famd_df["dim_0"],
-                X_famd_df["dim_1"],
-                c=clusters
-            )
-
-            ax2.set_xlabel("Dimension 1")
-            ax2.set_ylabel("Dimension 2")
-            ax2.set_title("FAMD Cluster Projection")
-
-            st.pyplot(fig2)
-
-            # -----------------------------------------
-            # VIEW CLUSTER MEMBERS
-            # -----------------------------------------
-            st.subheader("View SMEs by Cluster")
-
-            selected_cluster = st.selectbox(
-                "Choose cluster",
-                sorted(result_df["cluster"].unique())
-            )
-
-            st.dataframe(
-                result_df[
-                    result_df["cluster"] == selected_cluster
-                ]
-            )
-
-            # -----------------------------------------
-            # DOWNLOAD
-            # -----------------------------------------
-            csv = result_df.to_csv(
-                index=False
-            ).encode("utf-8")
-
-            st.download_button(
-                label="Download Results CSV",
-                data=csv,
-                file_name="cluster_results.csv",
-                mime="text/csv"
-            )
-
-    except Exception as e:
-        st.error(str(e))
+    plt.tight_layout()
+    st.pyplot(fig)
 
 else:
-    st.info("Upload a CSV file to begin.")
+    st.write("Please upload a CSV file.")
