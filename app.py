@@ -1,194 +1,260 @@
+# app.py
+# Streamlit version of your working notebook logic
+# Upload CSV -> remove IDs -> FAMD(8) -> KMeans(4) -> reattach IDs -> profiles + visuals
+
 import streamlit as st
 import pandas as pd
-import joblib
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.utils import shuffle
-from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.inspection import permutation_importance
+import prince
 
-# Streamlit app configuration
-st.set_page_config(page_title="Stroke Prediction Dashboard", layout="wide")
-st.title('Stroke Risk Assessment Dashboard')
+from sklearn.cluster import KMeans
 
-# Upload CSV file
-uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
+# =====================================================
+# PAGE CONFIG
+# =====================================================
+st.set_page_config(
+    page_title="SME Clustering App",
+    layout="wide"
+)
 
+st.title("SME Clustering App")
+st.caption(
+    "Upload a CSV file to cluster SMEs using FAMD + KMeans."
+)
+
+# =====================================================
+# FIXED SETTINGS
+# =====================================================
+N_COMPONENTS = 8
+N_CLUSTERS = 4
+
+id_cols = [
+    "Company name",
+    "Company Email",
+    "Company number",
+    "City"
+]
+
+# =====================================================
+# FILE UPLOAD
+# =====================================================
+uploaded_file = st.file_uploader(
+    "Upload CSV File",
+    type=["csv"]
+)
+
+# =====================================================
+# MAIN APP
+# =====================================================
 if uploaded_file is not None:
-    # Load the data
-    data = pd.read_csv(uploaded_file)
 
-    # Create a column with descriptive stroke labels
-    data['Stroke_Label'] = data['Stroke'].map({0.0: 'No Stroke', 1.0: 'Stroke'})
-    
-    st.sidebar.header('Data Overview')
-    st.sidebar.write("### Dataset Sample")
-    st.sidebar.write(data.head())
-    st.sidebar.write(f"### Data Shape: {data.shape}")
+    try:
+        # ---------------------------------------------
+        # LOAD DATA
+        # ---------------------------------------------
+        df = pd.read_csv(uploaded_file)
 
-    # Separate classes
-    majority_class = data[data['Stroke'] == 0.0]
-    minority_class = data[data['Stroke'] == 1.0]
+        st.subheader("Dataset Preview")
+        st.dataframe(df.head())
 
-    # Downsample the majority class
-    majority_downsampled = majority_class.sample(n=len(minority_class), random_state=42)
+        st.write(f"Rows: {df.shape[0]} | Columns: {df.shape[1]}")
 
-    # Combine the minority class with the downsampled majority class
-    balanced_df = pd.concat([minority_class, majority_downsampled])
+        # ---------------------------------------------
+        # IDENTIFY ID COLUMNS PRESENT
+        # ---------------------------------------------
+        existing_ids = [col for col in id_cols if col in df.columns]
 
-    # Shuffle the dataset to ensure the classes are mixed
-    balanced_df = shuffle(balanced_df, random_state=42).reset_index(drop=True)
+        ids = df[existing_ids].copy()
 
-    # Separate features and target in the balanced dataset
-    X_balanced = balanced_df.drop(['Stroke', 'Stroke_Label'], axis=1)  # Features
-    y = balanced_df['Stroke']  # Target variable
+        # ---------------------------------------------
+        # REMOVE IDS
+        # ---------------------------------------------
+        X = df.drop(columns=existing_ids, errors="ignore").copy()
 
-    # Scale the data
-    scaler = MinMaxScaler()
-    X_scaled = scaler.fit_transform(X_balanced)
+        # ---------------------------------------------
+        # RUN MODEL
+        # ---------------------------------------------
+        if st.button("Run Analysis"):
 
-    # Load the pre-trained Neural Network model
-    model = joblib.load('neural_network_model_selected_features_.joblib')
+            with st.spinner("Running clustering model..."):
 
-    # Make predictions on the data
-    y_pred_prob = model.predict_proba(X_scaled)[:, 1]
-    y_pred = model.predict(X_scaled)
+                # FAMD
+                famd = prince.FAMD(
+                    n_components=N_COMPONENTS,
+                    random_state=42
+                )
 
-    # Convert y_pred to a Pandas Series for mapping
-    y_pred_series = pd.Series(y_pred)
+                X_famd = famd.fit_transform(X)
 
-    # Distribution of Predicted Stroke Cases
-    st.subheader('Distribution of Predicted Stroke Cases')
-    prediction_df = pd.DataFrame({
-        'True Stroke': data['Stroke_Label'], 
-        'Predicted Stroke': y_pred_series.map({0.0: 'No Stroke', 1.0: 'Stroke'})
-    })
-    prediction_counts = prediction_df['Predicted Stroke'].value_counts().reset_index()
-    prediction_counts.columns = ['Predicted Stroke', 'Count']
+                # KMeans
+                kmeans = KMeans(
+                    n_clusters=N_CLUSTERS,
+                    random_state=42,
+                    n_init=10
+                )
 
-    fig_pred, ax_pred = plt.subplots(figsize=(8, 6))
-    sns.barplot(x='Predicted Stroke', y='Count', data=prediction_counts, palette='coolwarm', ax=ax_pred)
-    for index, value in enumerate(prediction_counts['Count']):
-        ax_pred.text(index, value + 1, f'{value}', ha='center', fontsize=10)
-    ax_pred.set_title('Predicted Stroke vs Non-Stroke Cases')
-    ax_pred.set_xlabel('Predicted Stroke')
-    ax_pred.set_ylabel('Count')
-    st.pyplot(fig_pred)
+                clusters = kmeans.fit_predict(X_famd)
 
-    # Compute classification metrics
-    report = classification_report(y, y_pred, output_dict=True)
+            # -----------------------------------------
+            # FAMD COORDINATES
+            # -----------------------------------------
+            X_famd_df = X_famd.copy()
+            X_famd_df.columns = [
+                f"dim_{i}" for i in range(X_famd_df.shape[1])
+            ]
 
-    # Extract metrics dynamically
-    metrics = {
-        'accuracy': accuracy_score(y, y_pred) * 100,
-        'precision_stroke': report.get('1.0', {}).get('precision', 0) * 100,
-        'recall_stroke': report.get('1.0', {}).get('recall', 0) * 100,
-        'f1_score_stroke': report.get('1.0', {}).get('f1-score', 0) * 100,
-        'precision_no_stroke': report.get('0.0', {}).get('precision', 0) * 100,
-        'recall_no_stroke': report.get('0.0', {}).get('recall', 0) * 100,
-        'f1_score_no_stroke': report.get('0.0', {}).get('f1-score', 0) * 100
-    }
+            # -----------------------------------------
+            # CLUSTER LABELS
+            # -----------------------------------------
+            clusters_df = pd.DataFrame(
+                {"cluster": clusters},
+                index=X.index
+            )
 
-    # Create DataFrame for metrics
-    metrics_df = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Percentage'])
-    metrics_df = metrics_df.sort_values(by='Percentage', ascending=False)
+            # -----------------------------------------
+            # REATTACH IDS
+            # -----------------------------------------
+            result_df = pd.concat(
+                [
+                    ids.reset_index(drop=True),
+                    X_famd_df.reset_index(drop=True),
+                    clusters_df.reset_index(drop=True)
+                ],
+                axis=1
+            )
 
-    # Create dashboard layout for metrics
-    st.sidebar.header('Model Metrics')
-    st.sidebar.write(f"### Accuracy: {metrics['accuracy']:.2f}%")
-    st.sidebar.write(f"### Precision (Stroke): {metrics['precision_stroke']:.2f}%")
-    st.sidebar.write(f"### Recall (Stroke): {metrics['recall_stroke']:.2f}%")
-    st.sidebar.write(f"### F1 Score (Stroke): {metrics['f1_score_stroke']:.2f}%")
-    st.sidebar.write(f"### Precision (No Stroke): {metrics['precision_no_stroke']:.2f}%")
-    st.sidebar.write(f"### Recall (No Stroke): {metrics['recall_no_stroke']:.2f}%")
-    st.sidebar.write(f"### F1 Score (No Stroke): {metrics['f1_score_no_stroke']:.2f}%")
+            # -----------------------------------------
+            # SHOW RESULTS
+            # -----------------------------------------
+            st.subheader("Clustered Results")
+            st.dataframe(result_df)
 
-    # Compute permutation importance
-    results = permutation_importance(model, X_scaled, y, scoring='accuracy', n_repeats=10, random_state=42)
-    importances = results.importances_mean
+            # -----------------------------------------
+            # NUMERIC PROFILE
+            # -----------------------------------------
+            numerical_cols = X.select_dtypes(
+                include=["number"]
+            ).columns
 
-    # Convert permutation importances to percentages
-    importances_percentage = importances * 100
-    features = X_balanced.columns  # Feature names
+            if len(numerical_cols) > 0:
 
-    # Create DataFrame for permutation importance
-    importance_df = pd.DataFrame({
-        'Feature': features,
-        'Importance': importances_percentage
-    })
-    importance_df = importance_df.sort_values(by='Importance', ascending=False)
+                cluster_profile_num = X.groupby(
+                    clusters
+                )[numerical_cols].mean()
 
-    # Compute Odds Ratios (OR) for each feature using Logistic Regression
-    logistic_model = LogisticRegression()
-    logistic_model.fit(X_scaled, y)
+                st.subheader("Numeric Cluster Profile")
+                st.dataframe(cluster_profile_num)
 
-    # Get coefficients and calculate odds ratios
-    coefficients = logistic_model.coef_[0]
-    odds_ratios = np.exp(coefficients)
+            # -----------------------------------------
+            # CATEGORICAL PROFILE
+            # -----------------------------------------
+            categorical_cols = X.select_dtypes(
+                include=["object", "category"]
+            ).columns.tolist()
 
-    # Create DataFrame for odds ratios
-    or_df = pd.DataFrame({
-        'Feature': features,
-        'Odds Ratio': odds_ratios
-    })
-    or_df = or_df.sort_values(by='Odds Ratio', ascending=False)
+            if len(categorical_cols) > 0:
 
-    # Visualize Odds Ratios
-    st.subheader('Odds Ratios for Features')
-    fig_or, ax_or = plt.subplots(figsize=(10, 6))
-    sns.barplot(x='Odds Ratio', y='Feature', data=or_df, palette='viridis', ax=ax_or)
+                st.subheader("Categorical Visualisation")
 
-    # Annotate odds ratios on the bars
-    for index, value in enumerate(or_df['Odds Ratio']):
-        ax_or.text(value, index, f'{value:.2f}', va='center', fontsize=10)
+                selected_col = st.selectbox(
+                    "Choose categorical feature",
+                    categorical_cols
+                )
 
-    ax_or.set_title('Odds Ratios for Features')
-    ax_or.set_xlabel('Odds Ratio')
-    ax_or.set_ylabel('Feature')
-    st.pyplot(fig_or)
+                cross = pd.crosstab(
+                    clusters,
+                    X[selected_col],
+                    normalize="index"
+                )
 
-    # Feature Importance
-    st.subheader('Feature Importance')
-    fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
-    sns.barplot(x='Importance', y='Feature', data=importance_df, palette='plasma', ax=ax_importance)
-    for index, value in enumerate(importance_df['Importance']):
-        ax_importance.text(value + 1, index, f'{value:.2f}%', va='center', fontsize=10)
-    ax_importance.set_title('Permutation Feature Importance in Percentages')
-    ax_importance.set_xlabel('Importance (%)')
-    ax_importance.set_ylabel('Feature')
-    ax_importance.set_xlim(0, 100)
-    st.pyplot(fig_importance)
+                st.dataframe(cross)
 
-    # Impact of Top Features on Stroke Prevalence
-    st.subheader('Impact of Top Features on Stroke Prevalence')
-    top_features = importance_df.head(5)
-    for feature in top_features['Feature']:
-        fig_feature, ax_feature = plt.subplots(figsize=(10, 4))
-        sns.lineplot(x=balanced_df[feature], y=y_pred_prob, ci=None, marker='o', ax=ax_feature)
-        ax_feature.set_title(f'Impact of {feature} on Predicted Stroke Probability')
-        ax_feature.set_xlabel(feature)
-        ax_feature.set_ylabel('Predicted Stroke Probability')
-        st.pyplot(fig_feature)
+                fig, ax = plt.subplots(
+                    figsize=(12, 6)
+                )
 
-    # Conclusions and Recommendations
-    st.subheader('Conclusions and Recommendations')
-    st.write(
-        """
-        ### Dataset Based Stroke Risk Asssessment Conclusions:
-        - **Age** and **HeartDiseaseorAttack** have significantly higher odds ratios in this model compared to commonly cited studies, suggesting these factors might have a more pronounced impact on stroke risk in the dataset used.
-        - **BMI** and **Income** have lower odds ratios compared to typical values, which could be attributed to the specific dataset or variations in the influence of these factors in different populations.
+                cross.plot(
+                    kind="bar",
+                    stacked=True,
+                    ax=ax
+                )
 
-        ### MESO Level Stroke Risk Recommendations:
-        - **Monitoring and Interventions**: Regular monitoring of individuals with high values in significant features  could help in early detection and intervention. Implementing lifestyle changes and medical check-ups focusing on these high-risk features can potentially reduce stroke incidence.
-        - **Model Improvements**: Consider incorporating additional features or data sources to enhance model performance. Regularly update the model with new data to adapt to changing patterns and improve predictive accuracy.
-        - **Public Health Campaigns**: Use insights from feature importances to tailor public health campaigns, focus on education around managing blood pressure and general health, given their significant impact on stroke risk.
-        - **Further Research**: Investigate the causal relationships between the identified features and stroke risk. Collaborate with healthcare professionals to validate the findings and explore new research avenues.
-        - **Stakeholder Engagement**: Share insights with healthcare providers and policymakers to inform strategies and guidelines. Providing actionable recommendations based on data can help in formulating effective health policies.
-        """
-    )
+                ax.set_title(
+                    f"{selected_col} by Cluster"
+                )
+
+                ax.set_xlabel("Cluster")
+                ax.set_ylabel("Proportion")
+
+                plt.xticks(rotation=0)
+                plt.tight_layout()
+
+                st.pyplot(fig)
+
+            # -----------------------------------------
+            # CLUSTER COUNTS
+            # -----------------------------------------
+            st.subheader("Cluster Counts")
+
+            counts = result_df["cluster"] \
+                .value_counts() \
+                .sort_index()
+
+            st.bar_chart(counts)
+
+            # -----------------------------------------
+            # FAMD SCATTER
+            # -----------------------------------------
+            st.subheader("Cluster Map")
+
+            fig2, ax2 = plt.subplots(
+                figsize=(8, 5)
+            )
+
+            ax2.scatter(
+                X_famd_df["dim_0"],
+                X_famd_df["dim_1"],
+                c=clusters
+            )
+
+            ax2.set_xlabel("Dimension 1")
+            ax2.set_ylabel("Dimension 2")
+            ax2.set_title("FAMD Cluster Projection")
+
+            st.pyplot(fig2)
+
+            # -----------------------------------------
+            # VIEW CLUSTER MEMBERS
+            # -----------------------------------------
+            st.subheader("View SMEs by Cluster")
+
+            selected_cluster = st.selectbox(
+                "Choose cluster",
+                sorted(result_df["cluster"].unique())
+            )
+
+            st.dataframe(
+                result_df[
+                    result_df["cluster"] == selected_cluster
+                ]
+            )
+
+            # -----------------------------------------
+            # DOWNLOAD
+            # -----------------------------------------
+            csv = result_df.to_csv(
+                index=False
+            ).encode("utf-8")
+
+            st.download_button(
+                label="Download Results CSV",
+                data=csv,
+                file_name="cluster_results.csv",
+                mime="text/csv"
+            )
+
+    except Exception as e:
+        st.error(str(e))
 
 else:
-    st.write("Please upload a CSV file.")
+    st.info("Upload a CSV file to begin.")
